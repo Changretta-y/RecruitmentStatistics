@@ -1,0 +1,36 @@
+# AUTH-003 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：backend/apps/accounts/、backend/config/、docs/implementation-notes/AUTH-003.md；未修改 backend/tests、docs/test-reports、docs/tasks 或前端。
+- 已实现行为：
+  - 新增匿名可调用的 POST /api/v1/auth/refresh/。
+  - 使用 SimpleJWT RefreshToken 校验签名、token_type、过期时间和持久化 blacklist 状态。
+  - 有效 refresh token 返回新的 access、refresh、access_expires_in=1800 和 refresh_expires_in=604800。
+  - 轮换前立即将旧 refresh token 写入 token_blacklist 数据库；旧 token 重放返回 401 INVALID_REFRESH_TOKEN。
+  - 新 refresh token 保留旧 token 的原始 exp，刷新不会延长原始 7 天绝对截止时间。
+  - 缺失、空值、伪造、过期、已黑名单和 access token 冒充 refresh token 均统一返回 401 INVALID_REFRESH_TOKEN，不回显 token。
+  - 新 access token 可访问 /api/v1/auth/me/。
+- 数据库迁移：未新增模型；黑名单使用现有 token_blacklist 内置迁移和 PostgreSQL 持久化。
+- 配置变化：
+  - 保持 SIMPLE_JWT 的 30 分钟 access、7 天 refresh、rotation 和 blacklist 配置。
+  - 保持 PostgreSQL、注册、登录、当前用户和健康 API。
+- 已知限制：
+  - 必须设置可连接的 PostgreSQL DATABASE_URL，不允许 SQLite 兜底。
+  - 本次复测使用的会话数据库地址为 postgresql://postgres:<password>@127.0.0.1:5432/postgres；密码未写入仓库。
+  - 测试数据库使用独立目标 postgres_test。
+  - 退出接口、前端刷新队列、Cookie 方案和限流不属于本任务。
+- 自检结果：
+  - uv：0.7.21；Python：3.11.13。
+  - PostgreSQL：PostgreSQL 17.11，127.0.0.1:5432 accepting connections。
+  - uv sync --frozen --group test：通过。
+  - uv run --no-sync python manage.py check：通过，0 issues。
+  - uv run --no-sync python manage.py makemigrations --check --dry-run：通过，No changes detected。
+  - uv run --no-sync python manage.py migrate --plan：通过。
+  - uv run --no-sync pytest tests/test_auth_003.py --tb=no -q：通过，7 passed。
+  - AUTH-001/002、健康和 URL 回归：通过，16 passed。
+- 建议复测命令：
+  - $env:DATABASE_URL='postgresql://postgres:<password>@127.0.0.1:5432/postgres'
+  - Set-Location backend
+  - uv sync --frozen --group test
+  - uv run --no-sync pytest tests/test_auth_003.py --tb=no -q
+- 测试完整性声明：未修改测试、断言或质量门槛。

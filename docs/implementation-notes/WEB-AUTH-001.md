@@ -1,0 +1,21 @@
+# WEB-AUTH-001 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：frontend/src/utils/token-storage.ts、frontend/src/api/http.ts、frontend/package.json、frontend/package-lock.json、docs/implementation-notes/WEB-AUTH-001.md
+- 已实现行为：
+  - 通过统一 token-storage 使用 localStorage 保存、读取和清除 accessToken、refreshToken、expiresAt。
+  - 读取时校验结构和本地 7 天截止时间；到期或数据损坏会自动清除并返回 null。
+  - publicClient 用于公开认证请求和 refresh；authClient/apiClient 用于受保护请求，自动注入 Bearer Access Token。
+  - 401 处理使用模块级单飞 refresh Promise；并发请求共享一次 refresh，成功后保存轮换后的 access/refresh，并将每个原请求最多重试一次。
+  - refresh 请求路径不会进入自动刷新分支；无 refresh token、refresh 失败或重试再次 401 时清理 Token 并尝试导航到 /login。
+- 数据库迁移：不涉及；本任务为前端认证基础设施。
+- 配置变化：新增 Axios 运行时依赖 axios ^1.20.0，并同步 package-lock.json。
+- 已知限制：认证 Store、路由守卫和登录/注册页面由后续 WEB-AUTH 任务负责；本任务仍按契约使用 localStorage。
+- 自检结果：
+  - nvm use 20.19.0；Node.js v20.19.0；npm 10.8.2。
+  - npm ci：通过。
+  - npm test -- --run --reporter=dot：通过，1 个测试文件、7 passed。
+  - npm run build：通过，现有脚本输出 Node.js v20.19.0。
+  - npm run lint：通过，现有脚本输出 Node.js v20.19.0。
+- 建议复测命令：在 frontend 目录执行 npm ci 后 npm test -- --run tests/test_token_storage.spec.ts --reporter=dot。
+- 测试完整性声明：未修改 frontend/tests、测试断言、报告或验收文档。

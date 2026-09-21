@@ -1,0 +1,26 @@
+# WEB-APP-002 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：frontend/src/views/ApplicationsView.vue、frontend/src/router/index.ts、docs/implementation-notes/WEB-APP-002.md
+- 已实现行为：
+  - 新增受保护的 ApplicationsView，提供项目名、当前用户名、退出按钮和新增公司进度入口。
+  - 查询区支持关键字、投递状态、当前阶段、投递时间起止、排序、pageSize、查询和重置；搜索框支持回车提交。
+  - 复用 WEB-APP-001 的 applications API 和统一查询类型，展示公司、岗位、状态、六个阶段时间、更新时间和操作占位。
+  - 默认 page=1、pageSize=20；筛选、排序和 pageSize 变化重置页码，翻页保留现有条件。
+  - 通过现有 application-query 工具同步 URL；首次加载、刷新和浏览器前进/后退均从 URL 恢复查询条件。
+  - 区分首次空列表、筛选无结果、网络错误和 401 状态；这些状态均保留当前查询条件并提供相应操作。
+  - 请求使用递增序列号，只接受最新响应，旧的并发搜索响应不会覆盖新结果。
+  - 页面不直接操作 localStorage，认证和退出继续由 Pinia Auth Store 负责。
+  - 回流修复显式绑定查询按钮和回车提交动作，确保用户修改状态、阶段、时间范围、排序后点击查询时提交完整 query state。
+  - 时间筛选输入接受带时区的 ISO 8601 文本值，提交时保留原值；筛选、排序和 pageSize 改变仍将页码重置为 1，翻页和重置行为保持契约。
+- 数据库迁移：不涉及；本任务为前端列表页面。
+- 配置变化：不涉及依赖或测试配置变化。
+- 已知限制：操作列暂为占位，新增/编辑/删除行为由后续任务接入。
+- 自检结果：
+  - nvm use 20.19.0：通过；Node.js v20.19.0。
+  - WEB-APP-002 回流测试：7 passed。
+  - 前端全量 Vitest：42 passed，5 个测试文件通过。
+  - npm run build：通过。
+  - 既有认证回归通过；运行期间仅有测试自建空路由产生的 Vue Router no-match stderr。
+- 建议复测命令：在 frontend 目录执行 nvm use 20.19.0、npm ci、npx vitest run tests/test_web_app_002.spec.ts --reporter=dot。
+- 测试完整性声明：未修改 frontend/tests、测试断言、测试报告、任务单或后端文件。

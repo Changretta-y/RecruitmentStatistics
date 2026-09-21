@@ -1,0 +1,31 @@
+# Python environments and caches
+.venv/
+backend/.venv/
+backend/db.sqlite3
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# Node.js dependencies and build output
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Coverage and editor files
+.coverage
+htmlcov/
+artifacts/
+test-results/
+frontend/test-results/
+.idea/
+.vscode/
+
+tests/e2e/*.log
+tests/e2e/playwright-report/

@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install the declared Python version
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Python runtime
+        run: uv python install
+
+      - name: Sync backend dependencies from the lock file
+        run: uv sync --project backend --frozen --group test
+
+      - name: Ruff
+        run: uv run --project backend ruff check .
+
+      - name: Backend pytest and coverage gate
+        env:
+          DJANGO_SECRET_KEY: ci-only-secret
+          DJANGO_DEBUG: "false"
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: |
+          uv run --project backend python manage.py migrate --noinput
+          uv run --project backend coverage run --branch --source=apps -m pytest --tb=no -q
+          uv run --project backend coverage report --fail-under=90
+
+      - name: Install the declared Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies from the lock file
+        run: npm ci --prefix frontend
+
+      - name: ESLint and TypeScript
+        run: npm run lint --prefix frontend
+
+      - name: Vitest and frontend coverage gate
+        run: npm run test:coverage --prefix frontend
+
+      - name: Build frontend
+        run: npm run build --prefix frontend
+
+      - name: Install E2E dependencies
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Start services for Playwright E2E
+        env:
+          DJANGO_SECRET_KEY: ci-only-secret
+          DJANGO_DEBUG: "false"
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          CORS_ALLOWED_ORIGINS: http://127.0.0.1:5173
+        run: |
+          nohup uv run --project backend python manage.py runserver 127.0.0.1:8000 >/tmp/backend.log 2>&1 &
+          nohup npm run dev --prefix frontend -- --host 127.0.0.1 --port 5173 >/tmp/frontend.log 2>&1 &
+          for i in {1..30}; do curl --fail --silent http://127.0.0.1:8000/api/v1/health/ && break || sleep 1; done
+
+      - name: Playwright E2E
+        env:
+          E2E_BASE_URL: http://127.0.0.1:5173
+          E2E_API_URL: http://127.0.0.1:8000
+        run: npm run e2e

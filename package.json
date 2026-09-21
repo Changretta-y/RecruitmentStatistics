@@ -1,0 +1,16 @@
+{
+  "name": "campus-recruitment-progress-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reproducible Playwright entry point for black-box E2E tests",
+  "engines": {
+    "node": "20.19.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "e2e": "playwright test --config=tests/e2e/playwright.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+  }
+}

@@ -1,0 +1,25 @@
+# WEB-AUTH-002 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：frontend/src/api/auth.ts、frontend/src/stores/auth.ts、frontend/src/router/index.ts、docs/implementation-notes/WEB-AUTH-002.md
+- 已实现行为：
+  - Pinia auth store 提供 user、initialized、loading 状态；Token 不复制到 Pinia，继续由 token-storage 统一管理。
+  - initialize 读取统一 Token 存储；无 Token 或本地 7 天过期时清理并完成初始化，否则调用 /api/v1/auth/me/，由 HTTP 层负责 Access Token 刷新。
+  - initialize 使用共享 Promise 防止并发重复认证请求，并在完成前保持 loading。
+  - me 请求失败时清理 user 和 Token，完成初始化，避免未授权状态闪烁。
+  - logout 无论接口成功、HTTP 失败或网络错误，均清理 user/Token 并尝试导航到 /login。
+  - 路由保护 requiresAuth：未认证访问 /applications 跳转 /login?redirect=<原地址>；认证用户访问 /login 或 /register 跳转 /applications。
+  - 浏览器使用 Web History，非浏览器测试环境使用 Memory History。
+- 数据库迁移：不涉及；本任务为前端认证状态和路由基础设施。
+- 配置变化：无；WEB-AUTH-002 依赖已由环境阶段补齐。
+- 已知限制与自检说明：
+  - WEB-AUTH-002 自测结果为 7 passed、2 failed。失败的两个 login/register 路由断言未设置 Token 或 Pinia 用户状态，却标记为“已登录”并期望跳转 /applications；按任务契约，未认证用户应停留在公开登录/注册页，因此未加入默认登录或测试专用分支。
+  - 其余 Store 初始化、过期清理、并发去重和 logout 三种失败分支均通过。
+- 自检结果：
+  - nvm use 20.19.0；Node.js v20.19.0；npm 10.8.2。
+  - npm ci：通过。
+  - WEB-AUTH-002：7 passed、2 failed，失败原因已在上方记录。
+  - WEB-AUTH-001 回归：7 passed。
+  - npm run build：通过。
+- 建议复测命令：在 frontend 目录执行 npx vitest run tests/test_web_auth_002.spec.ts --reporter=dot。
+- 测试完整性声明：未修改 frontend/tests、测试断言、报告或验收文档。

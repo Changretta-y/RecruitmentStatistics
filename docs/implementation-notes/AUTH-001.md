@@ -1,0 +1,38 @@
+# AUTH-001 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：backend/apps/accounts/、backend/config/settings.py、backend/config/urls.py、docs/implementation-notes/AUTH-001.md；未修改 backend/tests、docs/test-reports、docs/tasks 或前端。
+- 已实现行为：
+  - 新增匿名可访问的 POST /api/v1/auth/register/。
+  - 接受 username、可选 email、password、password_confirm。
+  - 用户名自动去首尾空格，并校验长度 3～30；邮箱使用 Django/DRF 邮箱格式校验。
+  - 密码至少 8 位，必须通过 Django 默认密码校验器；两次密码不一致返回 PASSWORDS_DO_NOT_MATCH。
+  - 使用 Django create_user() 持久化用户，密码保存为 Django 哈希。
+  - 成功返回 201，仅包含 id、username、email、date_joined。
+  - 重复用户名返回 409 USERNAME_ALREADY_EXISTS；字段错误返回 400 VALIDATION_ERROR 和 details。
+  - 注册接口显式 AllowAny 且不自动登录，不返回密码或密码哈希。
+- 数据库迁移：未新增模型，makemigrations --check --dry-run 无变化；用户表使用 Django auth 内置迁移。
+- 配置变化：
+  - 注册 accounts app 和 auth/register/路由已接入现有 API。
+  - 配置 Django UserAttributeSimilarityValidator、MinimumLengthValidator、CommonPasswordValidator 和 NumericPasswordValidator。
+  - 保持 PostgreSQL 配置、JWT blacklist 基线和健康 API 不变。
+- 已知限制：
+  - 必须设置可连接的 PostgreSQL DATABASE_URL，不允许 SQLite 兜底。
+  - 本次复测使用的会话数据库地址为 postgresql://postgres:<password>@127.0.0.1:5432/postgres；密码未写入仓库。
+  - 测试数据库由 Django 使用独立目标 postgres_test；本任务不实现登录、Token、退出、邮箱验证或限流。
+- 自检结果：
+  - uv：0.7.21；Python：3.11.13。
+  - PostgreSQL：PostgreSQL 17.11，127.0.0.1:5432 accepting connections。
+  - uv sync --frozen：通过。
+  - uv sync --frozen --group test：通过。
+  - uv run --no-sync python manage.py check：通过，0 issues。
+  - uv run --no-sync python manage.py makemigrations --check --dry-run：通过，No changes detected。
+  - uv run --no-sync python manage.py migrate --plan：通过。
+  - uv run --no-sync pytest tests/test_auth_001.py --tb=no -q：通过，7 passed。
+  - uv run --no-sync pytest tests/test_health.py tests/test_urls.py --tb=no -q：通过，2 passed。
+- 建议复测命令：
+  - $env:DATABASE_URL='postgresql://postgres:<password>@127.0.0.1:5432/postgres'
+  - Set-Location backend
+  - uv sync --frozen --group test
+  - uv run --no-sync pytest tests/test_auth_001.py --tb=no -q
+- 测试完整性声明：未修改测试、断言或质量门槛。

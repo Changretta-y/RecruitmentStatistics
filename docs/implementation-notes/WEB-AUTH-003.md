@@ -1,0 +1,27 @@
+# WEB-AUTH-003 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：frontend/src/api/auth.ts、frontend/src/stores/auth.ts、frontend/src/router/index.ts、frontend/src/views/LoginView.vue、frontend/src/views/RegisterView.vue、frontend/vitest.config.mts、frontend/package.json、frontend/package-lock.json、docs/implementation-notes/WEB-AUTH-003.md
+- 已实现行为：
+  - RegisterView 提供 username、可选 email、password、password_confirm 字段，具备可访问 label、字段错误和提交按钮。
+  - 注册前校验用户名 3-30 个字符、密码至少 8 个字符、密码确认一致及可选邮箱格式。
+  - 注册提交期间禁用按钮并显示提交中；后端 VALIDATION_ERROR details 映射到对应字段。
+  - 注册成功显示“注册成功，请登录”，不自动登录并跳转 /login。
+  - LoginView 校验 username/password，提交期间禁用按钮并显示登录中。
+  - 登录调用 auth API，成功交给 Pinia Store 保存 Token/user，并跳转 redirect 或 /applications。
+  - 401 INVALID_CREDENTIALS 显示不枚举用户存在性的通用错误；网络/500 保留输入并允许再次提交。
+  - 组件不直接操作 localStorage，Token/session 由 API 与 auth store 负责。
+  - LoginView/RegisterView 已接入现有 router；新增 auth API 的 login/register 公开方法。
+- 数据库迁移：不涉及；本任务为前端页面和认证交互。
+- 配置变化：为 Vue SFC 测试接入 @vitejs/plugin-vue 6.0.9，并在 Vitest 配置中启用插件。
+- 已知限制：本任务不实现邮箱验证、页面视觉系统、投递列表页面或后端认证逻辑。
+- 自检结果：
+  - nvm current：v20.19.0；Node.js v20.19.0；npm 10.8.2。
+  - npm ci：通过。
+  - WEB-AUTH-003：7 passed。
+  - WEB-AUTH-002 回归：9 passed。
+  - WEB-AUTH-001 回归：7 passed。
+  - npm run build：通过。
+  - 测试运行期间仅有测试自建空路由产生的 Vue Router no-match stderr，不影响断言结果。
+- 建议复测命令：在 frontend 目录执行 nvm use 20.19.0、npm ci、npx vitest run tests/test_web_auth_003.spec.ts --reporter=dot。
+- 测试完整性声明：未修改 frontend/tests、测试断言、报告或验收文档。

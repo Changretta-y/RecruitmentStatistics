@@ -1,0 +1,36 @@
+# AUTH-004 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：backend/apps/accounts/、backend/config/、docs/implementation-notes/AUTH-004.md；未修改 backend/tests、docs/test-reports、docs/tasks 或前端。
+- 已实现行为：
+  - 新增需要有效 Access Token 的 POST /api/v1/auth/logout/。
+  - 接受当前 refresh 字段，使用 SimpleJWT 将有效 Refresh Token 持久化写入 token_blacklist。
+  - 正常退出返回 204 No Content，响应体为空且不包含任何 token。
+  - 已黑名单或已过期的 Refresh Token 重复退出保持幂等，返回 204，不泄露 token 状态。
+  - 缺少、格式错误或不属于当前用户的 Refresh Token 返回安全 4xx。
+  - 无 Access Token、无效 Access Token 或错误认证凭据无法访问退出接口；当前用户接口仍由 JWT Access Token 保护。
+  - 退出不会将现有 Access Token 自动转换或回显为其他 token；Refresh Token 后续刷新失败。
+- 数据库迁移：未新增模型；blacklist 使用现有 token_blacklist 内置迁移和 PostgreSQL 持久化。
+- 配置变化：
+  - 保持 PostgreSQL、注册、登录、refresh、当前用户和健康 API。
+  - 保持 SimpleJWT rotation、7 天 Refresh Token 和 blacklist 配置。
+- 已知限制：
+  - 必须设置可连接的 PostgreSQL DATABASE_URL，不允许 SQLite 兜底。
+  - 本次复测使用的会话数据库地址为 postgresql://postgres:<password>@127.0.0.1:5432/postgres；密码未写入仓库。
+  - 测试数据库使用独立目标 postgres_test。
+  - 前端状态清理、限流、审计和多因素认证不属于本任务。
+- 自检结果：
+  - uv：0.7.21；Python：3.11.13。
+  - PostgreSQL：PostgreSQL 17.11，127.0.0.1:5432 accepting connections。
+  - uv sync --frozen --group test：通过。
+  - uv run --no-sync python manage.py check：通过，0 issues。
+  - uv run --no-sync python manage.py makemigrations --check --dry-run：通过，No changes detected。
+  - uv run --no-sync python manage.py migrate --plan：通过。
+  - uv run --no-sync pytest tests/test_auth_004.py --tb=no -q：通过，8 passed。
+  - AUTH-001/002/003、健康和 URL 回归：通过，23 passed。
+- 建议复测命令：
+  - $env:DATABASE_URL='postgresql://postgres:<password>@127.0.0.1:5432/postgres'
+  - Set-Location backend
+  - uv sync --frozen --group test
+  - uv run --no-sync pytest tests/test_auth_004.py --tb=no -q
+- 测试完整性声明：未修改测试、断言或质量门槛。

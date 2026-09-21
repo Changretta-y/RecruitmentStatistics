@@ -1,0 +1,39 @@
+# AUTH-002 实现说明
+
+- 状态：READY_FOR_TEST
+- 修改范围：backend/apps/accounts/、backend/config/settings.py、backend/config/urls.py、docs/implementation-notes/AUTH-002.md；未修改 backend/tests、docs/test-reports、docs/tasks 或前端。
+- 已实现行为：
+  - 新增匿名可访问的 POST /api/v1/auth/login/，接受 username 和 password。
+  - 使用 Django authenticate() 校验凭据；不存在用户、错误密码和禁用用户统一返回 401 INVALID_CREDENTIALS。
+  - 缺少或格式错误字段返回 400 VALIDATION_ERROR，并通过 details 返回字段错误。
+  - 使用已接线的 SimpleJWT 签发 access 和 refresh JWT。
+  - Access Token 生命周期为 1800 秒，Refresh Token 生命周期为 604800 秒。
+  - 新增 GET /api/v1/auth/me/，仅接受 JWT access token，返回当前用户 id、username、email。
+  - refresh token、无效 token 或未认证请求不能访问当前用户接口。
+  - 登录和当前用户响应均不包含密码、密码哈希或额外敏感字段。
+- 数据库迁移：未新增模型；makemigrations --check --dry-run 无变化，用户数据继续使用 Django auth 内置迁移。
+- 配置变化：
+  - SIMPLE_JWT 显式配置 30 分钟 Access Token 和 7 天 Refresh Token。
+  - SECRET_KEY 支持环境变量，开发默认值长度满足 JWT HMAC 要求。
+  - 保持 PostgreSQL、注册 API、健康 API 和 JWT blacklist 配置。
+- 已知限制：
+  - 必须设置可连接的 PostgreSQL DATABASE_URL，不允许 SQLite 兜底。
+  - 本次复测使用的会话数据库地址为 postgresql://postgres:<password>@127.0.0.1:5432/postgres；密码未写入仓库。
+  - 测试数据库使用独立目标 postgres_test。
+  - Refresh Token 轮换、退出黑名单、限流和前端 Token 存储不属于本任务。
+- 自检结果：
+  - uv：0.7.21；Python：3.11.13。
+  - PostgreSQL：PostgreSQL 17.11，127.0.0.1:5432 accepting connections。
+  - uv sync --frozen：通过。
+  - uv sync --frozen --group test：通过。
+  - uv run --no-sync python manage.py check：通过，0 issues。
+  - uv run --no-sync python manage.py makemigrations --check --dry-run：通过，No changes detected。
+  - uv run --no-sync python manage.py migrate --plan：通过。
+  - uv run --no-sync pytest tests/test_auth_002.py --tb=no -q：通过，7 passed。
+  - AUTH-001、健康和 URL 回归：通过，9 passed。
+- 建议复测命令：
+  - $env:DATABASE_URL='postgresql://postgres:<password>@127.0.0.1:5432/postgres'
+  - Set-Location backend
+  - uv sync --frozen --group test
+  - uv run --no-sync pytest tests/test_auth_002.py --tb=no -q
+- 测试完整性声明：未修改测试、断言或质量门槛。
