@@ -41,7 +41,7 @@ pipeline {
 
         stage('Deploy production') {
             when {
-                branch 'main'
+                branch 'release'
             }
             steps {
                 sh '''
@@ -53,7 +53,7 @@ pipeline {
 
         stage('Smoke test') {
             when {
-                branch 'main'
+                branch 'release'
             }
             steps {
                 sh '''
