@@ -22,6 +22,7 @@ import { VTable } from "vuetify/components/VTable";
 import { VTextField } from "vuetify/components/VTextField";
 
 import { delete as deleteRequest, list } from "../api/applications";
+import DateTimeField from "../components/DateTimeField.vue";
 import { useAuthStore } from "../stores/auth";
 import {
   DEFAULT_ORDERING,
@@ -115,8 +116,8 @@ function applyQuery(state: ApplicationQueryState): void {
   search.value = state.search;
   applicationStatus.value = state.applicationStatus;
   stage.value = state.stage;
-  applicationTimeAfter.value = state.applicationTimeAfter ?? "";
-  applicationTimeBefore.value = state.applicationTimeBefore ?? "";
+  applicationTimeAfter.value = toDateTimeLocal(state.applicationTimeAfter ?? "");
+  applicationTimeBefore.value = toDateTimeLocal(state.applicationTimeBefore ?? "");
   ordering.value = state.ordering;
 }
 
@@ -127,8 +128,8 @@ function currentQuery(): ApplicationQueryState {
     search: search.value,
     ...(applicationStatus.value ? { applicationStatus: applicationStatus.value } : {}),
     ...(stage.value ? { stage: stage.value } : {}),
-    ...(applicationTimeAfter.value ? { applicationTimeAfter: applicationTimeAfter.value } : {}),
-    ...(applicationTimeBefore.value ? { applicationTimeBefore: applicationTimeBefore.value } : {}),
+    ...(applicationTimeAfter.value ? { applicationTimeAfter: toIsoDateTime(applicationTimeAfter.value) } : {}),
+    ...(applicationTimeBefore.value ? { applicationTimeBefore: toIsoDateTime(applicationTimeBefore.value) } : {}),
     ordering: ordering.value || DEFAULT_ORDERING,
   };
 }
@@ -228,9 +229,34 @@ function displayStatus(value: string): string {
 }
 function displayStage(value: string | null): string {
   if (!value) return "—";
-  return stageOptions.find((option) => option.value === value)?.title ?? value;
+  return stageOptions.find((option) => option.value === value)?.title ?? displayStatus(value);
 }
-function displayTime(value: string | null): string { return value ? value.slice(0, 10) : "—"; }
+function displayCurrentStage(application: JobApplication): string {
+  return displayStage(application.currentStage ?? application.applicationStatus);
+}
+function statusColor(application: JobApplication): string {
+  const currentStage = application.currentStage ?? application.applicationStatus;
+  if (currentStage === "offer") return "success";
+  if (currentStage === "rejected" || currentStage === "withdrawn") return "error";
+  return "primary";
+}
+function toDateTimeLocal(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+function toIsoDateTime(value: string): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00:00`;
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) return value;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+function displayTime(value: string | null): string {
+  return value ? toDateTimeLocal(value).slice(0, 10) : "—";
+}
 
 watch(() => route.fullPath, () => {
   const next = parseApplicationQuery(route.query as Record<string, unknown>);
@@ -289,8 +315,8 @@ onMounted(() => { void initializeAndLoad(); });
           <VTextField v-model="search" name="search" label="关键字" placeholder="搜索公司或岗位" prepend-inner-icon="mdi-magnify" @keyup.enter.prevent="submitQuery" />
           <VSelect v-model="applicationStatus" name="status" label="投递状态" :items="statusOptions" item-title="title" item-value="value" clearable />
           <VSelect v-model="stage" name="stage" label="当前阶段" :items="stageOptions" item-title="title" item-value="value" clearable />
-          <VTextField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" placeholder="ISO 8601" />
-          <VTextField v-model="applicationTimeBefore" name="applicationTimeBefore" label="投递时间止" placeholder="ISO 8601" />
+          <DateTimeField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" clearable />
+          <DateTimeField v-model="applicationTimeBefore" name="applicationTimeBefore" label="投递时间止" clearable />
           <VSelect v-model="ordering" label="排序" :items="orderingOptions" item-title="title" item-value="value" />
           <VSelect v-model.number="pageSize" name="pageSize" label="每页" :items="APPLICATION_PAGE_SIZES" @update:model-value="changePageSize" />
           <div class="query-actions">
@@ -367,7 +393,11 @@ onMounted(() => { void initializeAndLoad(); });
           <tr v-for="application in data.results" :key="application.id">
             <td class="font-weight-medium">{{ application.companyName }}</td>
             <td>{{ application.positionName }}</td>
-            <td><VChip size="small" :color="application.applicationStatus === 'offer' ? 'success' : 'primary'" variant="tonal">{{ displayStatus(application.applicationStatus) }}</VChip></td>
+            <td>
+              <VChip size="small" :color="statusColor(application)" variant="tonal">
+                {{ displayCurrentStage(application) }}
+              </VChip>
+            </td>
             <td>{{ displayTime(application.aiInterviewTime) }}</td>
             <td>{{ displayTime(application.writtenTestTime) }}</td>
             <td>{{ displayTime(application.firstInterviewTime) }}</td>

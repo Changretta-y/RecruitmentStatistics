@@ -17,13 +17,20 @@ export type ApplicationStage =
   | "third_interview"
   | "hr_interview";
 
+export type ApplicationCurrentStage =
+  | ApplicationStage
+  | "applied"
+  | "offer"
+  | "rejected"
+  | "withdrawn";
+
 export interface JobApplication {
   id: number;
   user: number;
   companyName: string;
   positionName: string;
   applicationStatus: ApplicationStatus;
-  currentStage: ApplicationStage | null;
+  currentStage: ApplicationCurrentStage | null;
   applicationTime: string | null;
   aiInterviewTime: string | null;
   writtenTestTime: string | null;
@@ -68,4 +75,3 @@ export interface ApplicationQueryState {
 }
 
 export type ApplicationQuery = Partial<ApplicationQueryState>;
-

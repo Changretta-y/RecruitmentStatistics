@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { VAlert } from "vuetify/components/VAlert";
 import { VBtn } from "vuetify/components/VBtn";
 import { VCard } from "vuetify/components/VCard";
+import { VCardActions } from "vuetify/components/VCard";
 import { VCardText } from "vuetify/components/VCard";
 import { VCardTitle } from "vuetify/components/VCard";
 import { VContainer } from "vuetify/components/VGrid";
@@ -43,6 +44,38 @@ function validate(): boolean {
   return Object.keys(nextErrors).length === 0;
 }
 
+function mapRegistrationError(error: any): void {
+  const response = error?.response?.data;
+  const details = response?.details;
+  if (details && typeof details === "object") {
+    errors.value = details;
+    return;
+  }
+
+  if (response?.code === "WEAK_PASSWORD") {
+    errors.value = {
+      password: ["密码过于简单，请使用至少 8 个字符且不易被猜到的密码。"],
+    };
+    return;
+  }
+
+  if (response?.code === "PASSWORDS_DO_NOT_MATCH") {
+    errors.value = {
+      password_confirm: ["两次输入的密码不一致。"],
+    };
+    return;
+  }
+
+  if (response?.code === "USERNAME_ALREADY_EXISTS") {
+    errors.value = {
+      username: ["用户名已存在，请换一个用户名。"],
+    };
+    return;
+  }
+
+  formError.value = "注册失败，请稍后重试。";
+}
+
 async function submit(): Promise<void> {
   successMessage.value = "";
   formError.value = "";
@@ -60,9 +93,7 @@ async function submit(): Promise<void> {
     successMessage.value = "注册成功，请登录";
     await router.push("/login");
   } catch (error: any) {
-    const details = error?.response?.data?.details;
-    if (details && typeof details === "object") errors.value = details;
-    else formError.value = "注册失败，请稍后重试。";
+    mapRegistrationError(error);
   } finally {
     loading.value = false;
   }
@@ -70,8 +101,8 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <VContainer class="auth-page py-10 py-md-16">
-    <VCard class="auth-card mx-auto" max-width="480" elevation="2">
+  <VContainer class="auth-page py-10 py-md-16" style="padding-left: 16px; padding-right: 16px">
+    <VCard class="auth-card mx-auto" width="100%" max-width="560" elevation="2">
       <VCardTitle class="auth-title text-h4">注册</VCardTitle>
       <VCardText>
         <VAlert v-if="successMessage" class="mb-4" type="success" variant="tonal" role="status">
@@ -89,7 +120,6 @@ async function submit(): Promise<void> {
             autocomplete="username"
             :error-messages="firstError('username') ? [firstError('username')] : []"
           />
-          <p v-if="firstError('username')" class="field-error" role="alert">{{ firstError("username") }}</p>
 
           <VTextField
             id="register-email"
@@ -100,7 +130,6 @@ async function submit(): Promise<void> {
             autocomplete="email"
             :error-messages="firstError('email') ? [firstError('email')] : []"
           />
-          <p v-if="firstError('email')" class="field-error" role="alert">{{ firstError("email") }}</p>
 
           <VTextField
             id="register-password"
@@ -111,7 +140,6 @@ async function submit(): Promise<void> {
             autocomplete="new-password"
             :error-messages="firstError('password') ? [firstError('password')] : []"
           />
-          <p v-if="firstError('password')" class="field-error" role="alert">{{ firstError("password") }}</p>
 
           <VTextField
             id="register-password-confirm"
@@ -122,15 +150,15 @@ async function submit(): Promise<void> {
             autocomplete="new-password"
             :error-messages="firstError('password_confirm') ? [firstError('password_confirm')] : []"
           />
-          <p v-if="firstError('password_confirm')" class="field-error" role="alert">
-            {{ firstError("password_confirm") }}
-          </p>
 
           <VBtn class="mt-3" type="submit" color="primary" block :loading="loading" :disabled="loading">
             {{ loading ? "提交中…" : "注册" }}
           </VBtn>
         </form>
       </VCardText>
+      <VCardActions class="justify-center pb-5">
+        <RouterLink to="/login" class="text-primary font-weight-medium">返回登录</RouterLink>
+      </VCardActions>
     </VCard>
   </VContainer>
 </template>
@@ -138,6 +166,5 @@ async function submit(): Promise<void> {
 <style scoped>
 .auth-page { min-height: calc(100vh - 64px); display: flex; align-items: center; }
 .auth-title { justify-content: center; padding-top: 32px; font-weight: 800; }
-.field-error { margin: -14px 0 14px; color: #b42318; font-size: .875rem; }
 </style>
 

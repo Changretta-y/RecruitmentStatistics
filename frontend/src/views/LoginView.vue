@@ -64,8 +64,8 @@ async function submit(): Promise<void> {
 </script>
 
 <template>
-  <VContainer class="auth-page py-10 py-md-16">
-    <VCard class="auth-card mx-auto" max-width="480" elevation="2">
+  <VContainer class="auth-page py-10 py-md-16" style="padding-left: 16px; padding-right: 16px">
+    <VCard class="auth-card mx-auto" width="100%" max-width="560" elevation="2">
       <VCardTitle class="auth-title text-h4">登录</VCardTitle>
       <VCardText>
         <VAlert v-if="formError" class="mb-5" type="error" variant="tonal" role="alert">
@@ -80,7 +80,6 @@ async function submit(): Promise<void> {
             autocomplete="username"
             :error-messages="firstError('username') ? [firstError('username')] : []"
           />
-          <p v-if="firstError('username')" class="field-error" role="alert">{{ firstError("username") }}</p>
 
           <VTextField
             id="login-password"
@@ -91,7 +90,6 @@ async function submit(): Promise<void> {
             autocomplete="current-password"
             :error-messages="firstError('password') ? [firstError('password')] : []"
           />
-          <p v-if="firstError('password')" class="field-error" role="alert">{{ firstError("password") }}</p>
 
           <VBtn
             class="mt-3"
@@ -116,6 +114,5 @@ async function submit(): Promise<void> {
 <style scoped>
 .auth-page { min-height: calc(100vh - 64px); display: flex; align-items: center; }
 .auth-title { justify-content: center; padding-top: 32px; font-weight: 800; }
-.field-error { margin: -14px 0 14px; color: #b42318; font-size: .875rem; }
 </style>
 
