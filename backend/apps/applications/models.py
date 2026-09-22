@@ -18,6 +18,7 @@ class JobApplication(models.Model):
     )
     company_name = models.CharField(max_length=200)
     position_name = models.CharField(max_length=200)
+    application_url = models.URLField(max_length=500, blank=True, default="")
     application_status = models.CharField(
         max_length=30,
         choices=Status.choices,

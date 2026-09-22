@@ -25,6 +25,22 @@ function readValue(query: QueryInput, key: string, aliases: string[] = []): stri
   return undefined;
 }
 
+function readValues(query: QueryInput, key: string, aliases: string[] = []): string[] {
+  const keys = [key, ...aliases];
+  const values: string[] = [];
+  for (const candidate of keys) {
+    if (query instanceof URLSearchParams) {
+      const current = query.getAll(candidate);
+      if (current.length > 0) values.push(...current);
+      continue;
+    }
+    const value = query[candidate];
+    if (Array.isArray(value)) values.push(...value.map(String));
+    else if (value !== undefined && value !== null) values.push(String(value));
+  }
+  return values.flatMap((value) => value.split(",")).map((value) => value.trim()).filter(Boolean);
+}
+
 function parsePositiveInteger(value: string | undefined, fallback: number): number {
   if (!value || !/^\d+$/.test(value)) return fallback;
   const parsed = Number(value);
@@ -45,9 +61,10 @@ function optionalString(value: string | undefined): string | undefined {
 
 export function parseApplicationQuery(query: QueryInput = {}): ApplicationQueryState {
   const search = readValue(query, "search") ?? "";
-  const applicationStatus = optionalString(readValue(query, "applicationStatus", ["application_status"])) as
-    | ApplicationQueryState["applicationStatus"]
-    | undefined;
+  const applicationStatuses = readValues(query, "applicationStatus", ["application_status"]);
+  const applicationStatus = applicationStatuses.length > 1
+    ? applicationStatuses as ApplicationQueryState["applicationStatus"]
+    : optionalString(applicationStatuses[0]) as ApplicationQueryState["applicationStatus"] | undefined;
   const stage = optionalString(readValue(query, "stage")) as ApplicationQueryState["stage"] | undefined;
 
   return {
@@ -74,7 +91,12 @@ export function serializeApplicationQuery(state: Partial<ApplicationQueryState> 
   };
 
   if (normalized.search) result.search = normalized.search;
-  if (normalized.applicationStatus) result.applicationStatus = normalized.applicationStatus;
+  if (normalized.applicationStatus) {
+    const statuses = Array.isArray(normalized.applicationStatus)
+      ? normalized.applicationStatus
+      : [normalized.applicationStatus];
+    if (statuses.length > 0) result.applicationStatus = statuses.join(",");
+  }
   if (normalized.stage) result.stage = normalized.stage;
   if (normalized.applicationTimeAfter) result.applicationTimeAfter = normalized.applicationTimeAfter;
   if (normalized.applicationTimeBefore) result.applicationTimeBefore = normalized.applicationTimeBefore;
@@ -86,4 +108,3 @@ export const parseQuery = parseApplicationQuery;
 export const fromUrlQuery = parseApplicationQuery;
 export const serializeQuery = serializeApplicationQuery;
 export const toUrlQuery = serializeApplicationQuery;
-

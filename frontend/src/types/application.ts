@@ -29,6 +29,7 @@ export interface JobApplication {
   user: number;
   companyName: string;
   positionName: string;
+  applicationUrl: string;
   applicationStatus: ApplicationStatus;
   currentStage: ApplicationCurrentStage | null;
   applicationTime: string | null;
@@ -67,7 +68,7 @@ export interface ApplicationQueryState {
   page: number;
   pageSize: ApplicationPageSize;
   search: string;
-  applicationStatus?: ApplicationStatus;
+  applicationStatus?: ApplicationStatus | ApplicationStatus[];
   stage?: ApplicationStage;
   applicationTimeAfter?: string;
   applicationTimeBefore?: string;

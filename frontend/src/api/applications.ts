@@ -9,6 +9,7 @@ import { parseApplicationQuery } from "../utils/application-query";
 const applicationFieldMap: Record<string, string> = {
   companyName: "company_name",
   positionName: "position_name",
+  applicationUrl: "application_url",
   applicationStatus: "application_status",
   currentStage: "current_stage",
   applicationTime: "application_time",
@@ -29,6 +30,7 @@ function mapApplication(value: Record<string, unknown>): JobApplication {
     user: value.user as number,
     companyName: get("company_name", "companyName") as string,
     positionName: get("position_name", "positionName") as string,
+    applicationUrl: (get("application_url", "applicationUrl") as string) ?? "",
     applicationStatus: get("application_status", "applicationStatus") as JobApplication["applicationStatus"],
     currentStage: (get("current_stage", "currentStage") as JobApplication["currentStage"]) ?? null,
     applicationTime: (get("application_time", "applicationTime") as string | null) ?? null,
@@ -84,7 +86,12 @@ function apiQuery(query: ApplicationQuery = {}): Record<string, string | number>
     page_size: normalized.pageSize,
   };
   if (normalized.search) params.search = normalized.search;
-  if (normalized.applicationStatus) params.application_status = normalized.applicationStatus;
+  if (normalized.applicationStatus) {
+    const statuses = Array.isArray(normalized.applicationStatus)
+      ? normalized.applicationStatus
+      : [normalized.applicationStatus];
+    if (statuses.length > 0) params.application_status = statuses.join(",");
+  }
   if (normalized.stage) params.stage = normalized.stage;
   if (normalized.applicationTimeAfter) params.application_time_after = normalized.applicationTimeAfter;
   if (normalized.applicationTimeBefore) params.application_time_before = normalized.applicationTimeBefore;

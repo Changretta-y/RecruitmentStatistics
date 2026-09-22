@@ -69,7 +69,8 @@ const orderingOptions = [
 ];
 
 const search = ref("");
-const applicationStatus = ref<ApplicationStatus | undefined>();
+const applicationStatus = ref<ApplicationStatus[]>([]);
+const statusCompatibilityValue = ref("");
 const stage = ref<ApplicationStage | undefined>();
 const applicationTimeAfter = ref("");
 const applicationTimeBefore = ref("");
@@ -98,7 +99,7 @@ const hasResults = computed(() => data.value.results.length > 0);
 const hasNext = computed(() => Boolean(data.value.next) || page.value < data.value.totalPages);
 const hasPrevious = computed(() => Boolean(data.value.previous) || page.value > 1);
 const hasActiveFilters = computed(() => Boolean(
-  search.value || applicationStatus.value || stage.value || applicationTimeAfter.value || applicationTimeBefore.value,
+  search.value || applicationStatus.value.length || stage.value || applicationTimeAfter.value || applicationTimeBefore.value,
 ));
 const deleteDialogOpen = computed({
   get: () => Boolean(confirmApplication.value),
@@ -114,7 +115,10 @@ function applyQuery(state: ApplicationQueryState): void {
   page.value = state.page;
   pageSize.value = state.pageSize;
   search.value = state.search;
-  applicationStatus.value = state.applicationStatus;
+  applicationStatus.value = Array.isArray(state.applicationStatus)
+    ? [...state.applicationStatus]
+    : state.applicationStatus ? [state.applicationStatus] : [];
+  statusCompatibilityValue.value = applicationStatus.value.length === 1 ? applicationStatus.value[0] : "";
   stage.value = state.stage;
   applicationTimeAfter.value = toDateTimeLocal(state.applicationTimeAfter ?? "");
   applicationTimeBefore.value = toDateTimeLocal(state.applicationTimeBefore ?? "");
@@ -126,15 +130,20 @@ function currentQuery(): ApplicationQueryState {
     page: page.value,
     pageSize: pageSize.value,
     search: search.value,
-    ...(applicationStatus.value ? { applicationStatus: applicationStatus.value } : {}),
+    ...(applicationStatus.value.length > 0 ? { applicationStatus: [...applicationStatus.value] } : {}),
     ...(stage.value ? { stage: stage.value } : {}),
     ...(applicationTimeAfter.value ? { applicationTimeAfter: toIsoDateTime(applicationTimeAfter.value) } : {}),
     ...(applicationTimeBefore.value ? { applicationTimeBefore: toIsoDateTime(applicationTimeBefore.value) } : {}),
     ordering: ordering.value || DEFAULT_ORDERING,
   };
 }
+async function changeStatus(value: ApplicationStatus[] | null | undefined): Promise<void> {
+  applicationStatus.value = Array.isArray(value) ? value : [];
+  await updateUrlAndLoad({ ...currentQuery(), page: 1 });
+}
 function syncStatus(event: Event): void {
-  applicationStatus.value = (event.target as HTMLSelectElement).value as ApplicationStatus || undefined;
+  const value = (event.target as HTMLSelectElement).value as ApplicationStatus;
+  void changeStatus(value ? [value] : []);
 }
 function syncStage(event: Event): void {
   stage.value = (event.target as HTMLSelectElement).value as ApplicationStage || undefined;
@@ -313,7 +322,7 @@ onMounted(() => { void initializeAndLoad(); });
       <VCardText>
         <form aria-label="投递查询" class="query-grid" @submit.prevent="submitQuery">
           <VTextField v-model="search" name="search" label="关键字" placeholder="搜索公司或岗位" prepend-inner-icon="mdi-magnify" @keyup.enter.prevent="submitQuery" />
-          <VSelect v-model="applicationStatus" name="status" label="投递状态" :items="statusOptions" item-title="title" item-value="value" clearable />
+          <VSelect v-model="applicationStatus" name="status" label="投递状态（可多选）" :items="statusOptions" item-title="title" item-value="value" multiple chips closable-chips clearable @update:model-value="changeStatus" />
           <VSelect v-model="stage" name="stage" label="当前阶段" :items="stageOptions" item-title="title" item-value="value" clearable />
           <DateTimeField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" clearable />
           <DateTimeField v-model="applicationTimeBefore" name="applicationTimeBefore" label="投递时间止" clearable />
@@ -324,8 +333,8 @@ onMounted(() => { void initializeAndLoad(); });
             <VBtn type="button" variant="tonal" @click="resetQuery">重置</VBtn>
           </div>
         </form>
-        <select v-model="applicationStatus" class="sr-only-input" name="status" aria-hidden="true" tabindex="-1" @change="syncStatus">
-          <option :value="undefined">全部状态</option>
+        <select v-model="statusCompatibilityValue" class="sr-only-input" name="status" aria-hidden="true" tabindex="-1" @change="syncStatus">
+          <option value="">全部状态</option>
           <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.title }}</option>
         </select>
         <select v-model="stage" class="sr-only-input" name="stage" aria-hidden="true" tabindex="-1" @change="syncStage">
@@ -391,7 +400,10 @@ onMounted(() => { void initializeAndLoad(); });
         </thead>
         <tbody>
           <tr v-for="application in data.results" :key="application.id">
-            <td class="font-weight-medium">{{ application.companyName }}</td>
+            <td class="font-weight-medium">
+              <a v-if="application.applicationUrl" class="company-link" :href="application.applicationUrl" target="_blank" rel="noopener noreferrer" @click.stop>{{ application.companyName }}</a>
+              <span v-else>{{ application.companyName }}</span>
+            </td>
             <td>{{ application.positionName }}</td>
             <td>
               <VChip size="small" :color="statusColor(application)" variant="tonal">
@@ -467,6 +479,8 @@ onMounted(() => { void initializeAndLoad(); });
 .table-card { overflow: hidden; }
 .applications-table :deep(th) { background: #f8faff; font-size: .78rem; white-space: nowrap; }
 .applications-table :deep(td) { white-space: nowrap; }
+.company-link { color: #3157d5; text-decoration: none; }
+.company-link:hover { text-decoration: underline; }
 .actions-cell { min-width: 150px; }
 .state-card { min-height: 250px; }
 .state-content { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }

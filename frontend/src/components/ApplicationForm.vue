@@ -18,6 +18,7 @@ type FormMode = "create" | "edit";
 type EditableField =
   | "companyName"
   | "positionName"
+  | "applicationUrl"
   | "applicationStatus"
   | "applicationTime"
   | "aiInterviewTime"
@@ -60,7 +61,7 @@ const stageLabels: Record<string, string> = {
   hrInterviewTime: "HR 面时间",
 };
 const editableFields: EditableField[] = [
-  "companyName", "positionName", "applicationStatus", "applicationTime", ...stageFields,
+  "companyName", "positionName", "applicationUrl", "applicationStatus", "applicationTime", ...stageFields,
 ];
 const timeFields: EditableField[] = ["applicationTime", ...stageFields];
 
@@ -73,7 +74,7 @@ type FormState = Record<EditableField, string | null> & {
 
 function emptyForm(): FormState {
   return {
-    companyName: "", positionName: "", applicationStatus: "applied",
+    companyName: "", positionName: "", applicationUrl: "", applicationStatus: "applied",
     applicationTime: null, aiInterviewTime: null, writtenTestTime: null,
     firstInterviewTime: null, secondInterviewTime: null, thirdInterviewTime: null,
     hrInterviewTime: null, notes: "",
@@ -135,7 +136,7 @@ function timeToRequest(value: string | null): string | null {
 }
 
 function fieldToRequest(field: EditableField | "notes", value: string | null): unknown {
-  if (field === "companyName" || field === "positionName" || field === "notes") return value ?? "";
+  if (field === "companyName" || field === "positionName" || field === "applicationUrl" || field === "notes") return value ?? "";
   if (field === "applicationStatus") return value;
   return timeToRequest(value);
 }
@@ -249,6 +250,14 @@ async function submit(): Promise<void> {
             label="岗位名称"
             required
             :error-messages="fieldErrors.positionName ? [fieldErrors.positionName] : []"
+          />
+          <VTextField
+            v-model="form.applicationUrl"
+            name="applicationUrl"
+            label="投递网址"
+            type="url"
+            placeholder="https://..."
+            :error-messages="fieldErrors.applicationUrl ? [fieldErrors.applicationUrl] : []"
           />
           <VSelect
             v-model="form.applicationStatus"
