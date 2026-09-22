@@ -40,14 +40,6 @@ pipeline {
         }
 
         stage('Deploy production') {
-            when {
-                expression {
-                    def branchNames = [env.BRANCH_NAME, env.GIT_BRANCH, env.GIT_LOCAL_BRANCH]
-                    return branchNames.any { branchName ->
-                        branchName == 'release' || branchName?.endsWith('/release')
-                    }
-                }
-            }
             steps {
                 sh '''
                     docker compose --env-file "$DEPLOY_ENV_FILE" up -d --remove-orphans
@@ -57,14 +49,6 @@ pipeline {
         }
 
         stage('Smoke test') {
-            when {
-                expression {
-                    def branchNames = [env.BRANCH_NAME, env.GIT_BRANCH, env.GIT_LOCAL_BRANCH]
-                    return branchNames.any { branchName ->
-                        branchName == 'release' || branchName?.endsWith('/release')
-                    }
-                }
-            }
             steps {
                 sh '''
                     docker run --rm --network host curlimages/curl:8.10.1 \
