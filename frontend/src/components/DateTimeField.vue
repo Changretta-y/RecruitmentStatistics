@@ -52,7 +52,7 @@ function updateFromPicker(event: Event): void {
       ref="picker"
       class="native-date-picker"
       type="datetime-local"
-      step="900"
+      step="60"
       tabindex="-1"
       aria-hidden="true"
       @input="updateFromPicker"

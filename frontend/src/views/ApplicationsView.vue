@@ -41,7 +41,7 @@ import {
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const projectName = "校招进度管理系统";
+const projectName = "我的投递进度";
 const drawerOpen = ref(false);
 
 const statusOptions: Array<{ value: ApplicationStatus; title: string }> = [
@@ -289,18 +289,18 @@ onMounted(() => { void initializeAndLoad(); });
   <VNavigationDrawer v-model="drawerOpen" temporary location="left" width="280">
     <div class="drawer-brand pa-6">
       <VIcon color="primary" size="30">mdi-briefcase-account</VIcon>
-      <span class="text-h6 font-weight-bold">招聘进度</span>
+      <span class="drawer-title">我的投递进度</span>
     </div>
     <VDivider />
     <VList nav density="comfortable">
-      <VListItem prepend-icon="mdi-view-dashboard-outline" title="投递总览" to="/applications" @click="drawerOpen = false" />
-      <VListItem prepend-icon="mdi-plus-circle-outline" title="新增公司进度" to="/applications/new" @click="drawerOpen = false" />
+      <VListItem prepend-icon="mdi-view-dashboard-outline" title="我的投递进度" to="/applications" @click="drawerOpen = false" />
+      <VListItem prepend-icon="mdi-plus-circle-outline" title="新增投递" to="/applications/new" @click="drawerOpen = false" />
     </VList>
   </VNavigationDrawer>
 
   <VAppBar color="surface" elevation="1" class="app-bar px-2 px-md-6">
     <VBtn icon="mdi-menu" variant="text" aria-label="打开导航" @click="drawerOpen = !drawerOpen" />
-    <div class="text-h6 font-weight-bold text-primary">{{ projectName }}</div>
+    <div class="app-title text-primary">{{ projectName }}</div>
     <VSpacer />
     <span v-if="username" class="user-name mr-2" aria-label="当前用户">
       <VIcon size="18" class="mr-1">mdi-account-circle-outline</VIcon>{{ username }}
@@ -311,11 +311,9 @@ onMounted(() => { void initializeAndLoad(); });
   <VContainer class="applications-page py-6 py-md-10" fluid>
     <div class="page-heading mb-6">
       <div>
-        <div class="eyebrow">CAMPUS RECRUITMENT</div>
-        <h1 class="text-h4 text-md-h3 font-weight-bold mb-2">我的投递进度</h1>
-        <p class="text-body-1 text-medium-emphasis mb-0">把每一次机会整理成清晰、可推进的下一步。</p>
+        <h1 class="page-title">我的投递进度</h1>
       </div>
-      <VBtn color="primary" prepend-icon="mdi-plus" to="/applications/new">新增公司进度</VBtn>
+      <VBtn class="create-button" color="primary" prepend-icon="mdi-plus" to="/applications/new">新增投递</VBtn>
     </div>
 
     <VCard class="query-card mb-6" elevation="1">
@@ -386,7 +384,7 @@ onMounted(() => { void initializeAndLoad(); });
       <VCardText class="state-content">
         <VIcon color="primary" size="48">mdi-briefcase-plus-outline</VIcon>
         <p>暂无投递记录，先新增第一条记录吧。</p>
-        <VBtn color="primary" to="/applications/new">新增第一条记录</VBtn>
+        <VBtn color="primary" to="/applications/new">新增投递</VBtn>
       </VCardText>
     </VCard>
 
@@ -470,9 +468,11 @@ onMounted(() => { void initializeAndLoad(); });
 <style scoped>
 .app-bar { position: sticky; top: 0; z-index: 10; }
 .drawer-brand { display: flex; align-items: center; gap: 12px; color: #182230; }
+.drawer-title, .app-title, .page-title, .create-button { font-size: 1rem; line-height: 1.5; font-weight: 700; }
+.app-title { letter-spacing: .01em; }
+.page-title { margin: 0; color: #182230; }
 .applications-page { max-width: 1480px; }
-.page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
-.eyebrow { color: #3157d5; font-size: .75rem; font-weight: 800; letter-spacing: .14em; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
 .query-card { border: 1px solid rgba(49, 87, 213, .1); }
 .query-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 16px; }
 .query-actions { display: flex; align-items: center; gap: 10px; min-height: 56px; }
@@ -489,7 +489,7 @@ onMounted(() => { void initializeAndLoad(); });
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 @media (max-width: 1100px) { .query-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 680px) {
-  .page-heading { align-items: flex-start; flex-direction: column; }
+  .page-heading { align-items: stretch; flex-direction: column; }
   .page-heading .v-btn { width: 100%; }
   .query-grid { grid-template-columns: 1fr; }
   .pagination-bar { flex-wrap: wrap; }
