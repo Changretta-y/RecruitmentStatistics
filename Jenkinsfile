@@ -41,7 +41,12 @@ pipeline {
 
         stage('Deploy production') {
             when {
-                branch 'release'
+                expression {
+                    def branchNames = [env.BRANCH_NAME, env.GIT_BRANCH, env.GIT_LOCAL_BRANCH]
+                    return branchNames.any { branchName ->
+                        branchName == 'release' || branchName?.endsWith('/release')
+                    }
+                }
             }
             steps {
                 sh '''
@@ -53,7 +58,12 @@ pipeline {
 
         stage('Smoke test') {
             when {
-                branch 'release'
+                expression {
+                    def branchNames = [env.BRANCH_NAME, env.GIT_BRANCH, env.GIT_LOCAL_BRANCH]
+                    return branchNames.any { branchName ->
+                        branchName == 'release' || branchName?.endsWith('/release')
+                    }
+                }
             }
             steps {
                 sh '''
