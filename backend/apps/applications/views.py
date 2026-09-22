@@ -18,7 +18,13 @@ application_query_parameters = [
     OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
     OpenApiParameter("page_size", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
     OpenApiParameter("search", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-    OpenApiParameter("application_status", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+    OpenApiParameter(
+        "application_status",
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        description="按状态筛选；多个状态使用逗号分隔，也支持重复参数。",
+    ),
     OpenApiParameter("stage", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
     OpenApiParameter("application_time_after", OpenApiTypes.DATETIME, OpenApiParameter.QUERY, required=False),
     OpenApiParameter("application_time_before", OpenApiTypes.DATETIME, OpenApiParameter.QUERY, required=False),
@@ -76,15 +82,25 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
                 | Q(position_name__icontains=search)
             )
 
-        application_status = params.get("application_status")
-        if application_status is not None:
+        raw_application_statuses = params.getlist("application_status")
+        application_statuses = [
+            status.strip()
+            for raw_statuses in raw_application_statuses
+            for status in raw_statuses.split(",")
+            if status.strip()
+        ]
+        if raw_application_statuses:
             allowed_statuses = {value for value, _label in JobApplication.Status.choices}
-            if application_status not in allowed_statuses:
+            invalid_status = next(
+                (status for status in application_statuses if status not in allowed_statuses),
+                None,
+            )
+            if invalid_status is not None or not application_statuses:
                 self._validation_error(
                     "application_status",
-                    "application_status is not a supported status.",
+                    "application_status must contain one or more supported statuses.",
                 )
-            queryset = queryset.filter(application_status=application_status)
+            queryset = queryset.filter(application_status__in=application_statuses)
 
         stage = params.get("stage")
         if stage is not None:

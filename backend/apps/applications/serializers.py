@@ -31,6 +31,7 @@ class JobApplicationSerializer(serializers.ModelSerializer):
             "user",
             "company_name",
             "position_name",
+            "application_url",
             "application_status",
             "current_stage",
             "application_time",
