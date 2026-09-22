@@ -11,6 +11,7 @@ import { VTextarea } from "vuetify/components/VTextarea";
 import { VTextField } from "vuetify/components/VTextField";
 
 import { create, update } from "../api/applications";
+import DateTimeField from "./DateTimeField.vue";
 import type { JobApplication, ApplicationStatus } from "../types/application";
 
 type FormMode = "create" | "edit";
@@ -61,6 +62,7 @@ const stageLabels: Record<string, string> = {
 const editableFields: EditableField[] = [
   "companyName", "positionName", "applicationStatus", "applicationTime", ...stageFields,
 ];
+const timeFields: EditableField[] = ["applicationTime", ...stageFields];
 
 type FormState = Record<EditableField, string | null> & {
   companyName: string;
@@ -91,11 +93,27 @@ function sourceValue(source: Props["application"], field: EditableField | "notes
   return record[field] ?? record[snake];
 }
 
+function isTimeField(field: EditableField | "notes"): boolean {
+  return timeFields.includes(field as EditableField);
+}
+
+function timeToInput(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) return raw;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function formFromApplication(source: Props["application"]): FormState {
   const next = emptyForm();
   for (const field of [...editableFields, "notes" as const]) {
     const value = sourceValue(source, field);
-    if (value !== undefined && value !== null) next[field] = String(value) as never;
+    if (value !== undefined && value !== null) {
+      next[field] = (isTimeField(field) ? timeToInput(value) : String(value)) as never;
+    }
   }
   return next;
 }
@@ -111,7 +129,7 @@ function clearErrors(): void {
 
 function timeToRequest(value: string | null): string | null {
   if (!value) return null;
-  if (/[zZ]|[+-]d{2}:?d{2}$/.test(value)) return value;
+  if (/[zZ]|[+-]\d{2}:?\d{2}$/.test(value)) return value;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toISOString();
 }
@@ -127,12 +145,6 @@ function requestPayload(source: FormState): Record<string, unknown> {
     payload[field] = fieldToRequest(field, source[field]);
     return payload;
   }, {});
-}
-
-function normalizeFormValues(): void {
-  for (const field of ["applicationTime", ...stageFields] as EditableField[]) {
-    form[field] = form[field] ? timeToRequest(form[field]) : null;
-  }
 }
 
 function isValidTime(value: string | null): boolean {
@@ -182,7 +194,6 @@ function mapBackendErrors(error: unknown): void {
 
 async function submit(): Promise<void> {
   if (isSubmitting.value || !validate()) return;
-  normalizeFormValues();
   isSubmitting.value = true;
   clearErrors();
   try {
@@ -248,20 +259,20 @@ async function submit(): Promise<void> {
             item-value="value"
             :error-messages="fieldErrors.applicationStatus ? [fieldErrors.applicationStatus] : []"
           />
-          <VTextField
+          <DateTimeField
             v-model="form.applicationTime"
             name="applicationTime"
             label="投递时间"
-            placeholder="ISO 8601"
+            clearable
             :error-messages="fieldErrors.applicationTime ? [fieldErrors.applicationTime] : []"
           />
-          <VTextField
+          <DateTimeField
             v-for="field in stageFields"
             :key="field"
             v-model="form[field]"
             :name="field"
             :label="stageLabels[field]"
-            placeholder="ISO 8601"
+            clearable
             :error-messages="fieldErrors[field] ? [fieldErrors[field]] : []"
           />
           <VTextarea
