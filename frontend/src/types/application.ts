@@ -34,11 +34,17 @@ export interface JobApplication {
   currentStage: ApplicationCurrentStage | null;
   applicationTime: string | null;
   aiInterviewTime: string | null;
+  aiInterviewDurationMinutes: number | null;
   writtenTestTime: string | null;
+  writtenTestDurationMinutes: number | null;
   firstInterviewTime: string | null;
+  firstInterviewDurationMinutes: number | null;
   secondInterviewTime: string | null;
+  secondInterviewDurationMinutes: number | null;
   thirdInterviewTime: string | null;
+  thirdInterviewDurationMinutes: number | null;
   hrInterviewTime: string | null;
+  hrInterviewDurationMinutes: number | null;
   notes: string;
   createdAt: string;
   updatedAt: string;

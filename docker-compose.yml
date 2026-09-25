@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-campus_recruitment}
       POSTGRES_USER: ${POSTGRES_USER:-campus}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campus-dev-password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -15,22 +15,35 @@ services:
       retries: 12
 
   backend:
+    image: ${BACKEND_IMAGE:-job-backend:latest}
     build:
       context: .
       dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
-      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-docker-dev-only-change-me}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
       DJANGO_ENV: ${DJANGO_ENV:-docker}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1,backend}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-campus}:${POSTGRES_PASSWORD:-campus-dev-password}@db:5432/${POSTGRES_DB:-campus_recruitment}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-115.190.240.84,localhost,127.0.0.1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://115.190.240.84:5173}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://115.190.240.84:5173}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-campus}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-campus_recruitment}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-false}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
+      SECURE_SSL_REDIRECT: ${SECURE_SSL_REDIRECT:-false}
+      SECURE_HSTS_SECONDS: ${SECURE_HSTS_SECONDS:-0}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      CSRF_COOKIE_SECURE: ${CSRF_COOKIE_SECURE:-false}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     healthcheck:
       test:
         ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=3)"]
@@ -38,6 +51,29 @@ services:
       timeout: 5s
       retries: 12
       start_period: 20s
+
+  scheduler:
+    image: ${BACKEND_IMAGE:-job-backend:latest}
+    profiles: ["daily-email"]
+    restart: unless-stopped
+    command: ["sh", "-c", "while :; do python manage.py send_daily_summaries; sleep 60; done"]
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY is required}
+      DJANGO_ENV: ${DJANGO_ENV:-docker}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-115.190.240.84,localhost,127.0.0.1}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-campus}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-campus_recruitment}
+      EMAIL_HOST: ${EMAIL_HOST:-}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER:-}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD:-}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS:-false}
+      EMAIL_USE_SSL: ${EMAIL_USE_SSL:-false}
+      DEFAULT_FROM_EMAIL: ${DEFAULT_FROM_EMAIL:-}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://115.190.240.84:5173}
+    depends_on:
+      backend:
+        condition: service_healthy
 
   frontend:
     build:

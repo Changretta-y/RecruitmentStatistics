@@ -22,11 +22,17 @@ type EditableField =
   | "applicationStatus"
   | "applicationTime"
   | "aiInterviewTime"
+  | "aiInterviewDurationMinutes"
   | "writtenTestTime"
+  | "writtenTestDurationMinutes"
   | "firstInterviewTime"
+  | "firstInterviewDurationMinutes"
   | "secondInterviewTime"
+  | "secondInterviewDurationMinutes"
   | "thirdInterviewTime"
-  | "hrInterviewTime";
+  | "thirdInterviewDurationMinutes"
+  | "hrInterviewTime"
+  | "hrInterviewDurationMinutes";
 
 interface Props {
   mode?: FormMode;
@@ -52,6 +58,18 @@ const stageFields: EditableField[] = [
   "aiInterviewTime", "writtenTestTime", "firstInterviewTime",
   "secondInterviewTime", "thirdInterviewTime", "hrInterviewTime",
 ];
+const stageDurationFields: EditableField[] = [
+  "aiInterviewDurationMinutes", "writtenTestDurationMinutes", "firstInterviewDurationMinutes",
+  "secondInterviewDurationMinutes", "thirdInterviewDurationMinutes", "hrInterviewDurationMinutes",
+];
+const durationByTimeField: Record<string, EditableField> = {
+  aiInterviewTime: "aiInterviewDurationMinutes",
+  writtenTestTime: "writtenTestDurationMinutes",
+  firstInterviewTime: "firstInterviewDurationMinutes",
+  secondInterviewTime: "secondInterviewDurationMinutes",
+  thirdInterviewTime: "thirdInterviewDurationMinutes",
+  hrInterviewTime: "hrInterviewDurationMinutes",
+};
 const stageLabels: Record<string, string> = {
   aiInterviewTime: "AI 面时间",
   writtenTestTime: "笔试时间",
@@ -61,7 +79,7 @@ const stageLabels: Record<string, string> = {
   hrInterviewTime: "HR 面时间",
 };
 const editableFields: EditableField[] = [
-  "companyName", "positionName", "applicationUrl", "applicationStatus", "applicationTime", ...stageFields,
+  "companyName", "positionName", "applicationUrl", "applicationStatus", "applicationTime", ...stageFields, ...stageDurationFields,
 ];
 const timeFields: EditableField[] = ["applicationTime", ...stageFields];
 
@@ -77,7 +95,11 @@ function emptyForm(): FormState {
     companyName: "", positionName: "", applicationUrl: "", applicationStatus: "applied",
     applicationTime: null, aiInterviewTime: null, writtenTestTime: null,
     firstInterviewTime: null, secondInterviewTime: null, thirdInterviewTime: null,
-    hrInterviewTime: null, notes: "",
+    hrInterviewTime: null,
+    aiInterviewDurationMinutes: null, writtenTestDurationMinutes: null,
+    firstInterviewDurationMinutes: null, secondInterviewDurationMinutes: null,
+    thirdInterviewDurationMinutes: null, hrInterviewDurationMinutes: null,
+    notes: "",
   };
 }
 
@@ -116,6 +138,10 @@ function formFromApplication(source: Props["application"]): FormState {
       next[field] = (isTimeField(field) ? timeToInput(value) : String(value)) as never;
     }
   }
+  for (const timeField of stageFields) {
+    const durationField = durationByTimeField[timeField];
+    if (next[timeField] && !next[durationField]) next[durationField] = "60";
+  }
   return next;
 }
 
@@ -138,6 +164,7 @@ function timeToRequest(value: string | null): string | null {
 function fieldToRequest(field: EditableField | "notes", value: string | null): unknown {
   if (field === "companyName" || field === "positionName" || field === "applicationUrl" || field === "notes") return value ?? "";
   if (field === "applicationStatus") return value;
+  if (stageDurationFields.includes(field as EditableField)) return value === null || value === "" ? null : Number(value);
   return timeToRequest(value);
 }
 
@@ -163,7 +190,31 @@ function validate(): boolean {
   for (const field of ["applicationTime", ...stageFields] as EditableField[]) {
     if (!isValidTime(form[field])) fieldErrors[field] = "请输入有效的 ISO 时间";
   }
+  for (const timeField of stageFields) {
+    const durationField = durationByTimeField[timeField];
+    const duration = form[durationField];
+    if (!form[timeField]) {
+      if (duration) {
+        form[durationField] = null;
+      }
+      continue;
+    }
+    if (!duration || !/^\d+$/.test(duration) || Number(duration) < 1 || Number(duration) > 1440) {
+      fieldErrors[durationField] = "时长必须为 1 到 1440 分钟的整数";
+    }
+  }
   return Object.keys(fieldErrors).length === 0;
+}
+
+function stageTimeChanged(field: EditableField, value: string | null): void {
+  const durationField = durationByTimeField[field];
+  if (!durationField) return;
+  if (!value) {
+    form[durationField] = null;
+  } else if (!form[durationField]) {
+    form[durationField] = "60";
+  }
+  delete fieldErrors[durationField];
 }
 
 const isDirty = computed(() => JSON.stringify(requestPayload(form)) !== JSON.stringify(initialRequest.value));
@@ -199,13 +250,21 @@ async function submit(): Promise<void> {
   clearErrors();
   try {
     const allValues = requestPayload(form);
-    const payload = props.mode === "edit"
-      ? Object.fromEntries(
-          [...editableFields, "notes" as const]
-            .filter((field) => allValues[field] !== initialRequest.value[field])
-            .map((field) => [field, allValues[field]]),
-        )
-      : allValues;
+    let payload = allValues;
+    if (props.mode === "edit") {
+      const changedFields = new Set(
+        [...editableFields, "notes" as const]
+          .filter((field) => allValues[field] !== initialRequest.value[field]),
+      );
+      // Keep the stage duration explicit when its start time changes so the
+      // saved appointment is represented as a complete time-and-duration pair.
+      for (const timeField of stageFields) {
+        if (changedFields.has(timeField)) changedFields.add(durationByTimeField[timeField]);
+      }
+      payload = Object.fromEntries(
+        [...changedFields].map((field) => [field, allValues[field]]),
+      );
+    }
     const response = props.mode === "edit"
       ? await update((props.application as Record<string, unknown>)?.id as number, payload)
       : await create(payload);
@@ -237,6 +296,9 @@ async function submit(): Promise<void> {
         </VAlert>
 
         <div class="form-grid">
+          <p class="text-body-2 text-medium-emphasis timezone-note">
+            阶段时间按浏览器本地时区填写；日历按北京时间显示。
+          </p>
           <VTextField
             v-model="form.companyName"
             name="companyName"
@@ -275,15 +337,27 @@ async function submit(): Promise<void> {
             clearable
             :error-messages="fieldErrors.applicationTime ? [fieldErrors.applicationTime] : []"
           />
-          <DateTimeField
-            v-for="field in stageFields"
-            :key="field"
-            v-model="form[field]"
-            :name="field"
-            :label="stageLabels[field]"
-            clearable
-            :error-messages="fieldErrors[field] ? [fieldErrors[field]] : []"
-          />
+          <template v-for="field in stageFields" :key="field">
+            <DateTimeField
+              v-model="form[field]"
+              :name="field"
+              :label="stageLabels[field]"
+              clearable
+              @update:model-value="stageTimeChanged(field, $event)"
+              :error-messages="fieldErrors[field] ? [fieldErrors[field]] : []"
+            />
+            <VTextField
+              v-model="form[durationByTimeField[field]]"
+              :name="durationByTimeField[field]"
+              :label="`${stageLabels[field]}时长（分钟）`"
+              type="text"
+              inputmode="numeric"
+              :disabled="!form[field]"
+              hint="请输入 1 到 1440 的整数分钟"
+              persistent-hint
+              :error-messages="fieldErrors[durationByTimeField[field]] ? [fieldErrors[durationByTimeField[field]]] : []"
+            />
+          </template>
           <VTextarea
             v-model="form.notes"
             name="notes"
@@ -308,6 +382,7 @@ async function submit(): Promise<void> {
 .application-form { width: 100%; }
 .application-card { overflow: visible; }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 18px; }
+.timezone-note { grid-column: 1 / -1; margin: 0 0 4px; }
 .form-grid > :last-child { grid-column: 1 / -1; }
 @media (max-width: 700px) {
   .form-grid { grid-template-columns: 1fr; }

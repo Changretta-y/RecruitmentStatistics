@@ -294,6 +294,7 @@ onMounted(() => { void initializeAndLoad(); });
     <VDivider />
     <VList nav density="comfortable">
       <VListItem prepend-icon="mdi-view-dashboard-outline" title="我的投递进度" to="/applications" @click="drawerOpen = false" />
+      <VListItem prepend-icon="mdi-calendar-month-outline" title="日历" to="/calendar" @click="drawerOpen = false" />
       <VListItem prepend-icon="mdi-plus-circle-outline" title="新增投递" to="/applications/new" @click="drawerOpen = false" />
     </VList>
   </VNavigationDrawer>
@@ -302,6 +303,7 @@ onMounted(() => { void initializeAndLoad(); });
     <VBtn icon="mdi-menu" variant="text" aria-label="打开导航" @click="drawerOpen = !drawerOpen" />
     <div class="app-title text-primary">{{ projectName }}</div>
     <VSpacer />
+    <VBtn variant="text" prepend-icon="mdi-bell-outline" to="/notification-settings">通知设置</VBtn>
     <span v-if="username" class="user-name mr-2" aria-label="当前用户">
       <VIcon size="18" class="mr-1">mdi-account-circle-outline</VIcon>{{ username }}
     </span>

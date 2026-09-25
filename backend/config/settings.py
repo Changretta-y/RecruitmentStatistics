@@ -56,6 +56,8 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "backend.apps.accounts",
     "backend.apps.applications",
+    "backend.apps.calendar_events",
+    "backend.apps.notifications",
     "backend.apps.health",
 ]
 
@@ -151,6 +153,23 @@ LANGUAGE_CODE = "zh-hans"
 TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True
 USE_TZ = True
+
+# Platform-owned SMTP configuration. The local development default follows
+# Django's conventional local SMTP host; production must set EMAIL_HOST to the
+# platform's managed SMTP endpoint. An explicitly empty host disables delivery.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend"
+).strip()
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost").strip()
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587") or "587")
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "").strip()
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = _env_bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = _env_bool("EMAIL_USE_SSL", default=False)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL", "noreply@example.com"
+).strip()
+FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "").rstrip("/")
 
 # Keep the static-files handler usable for the public development entry point
 # without coupling production deployment to a writable source directory.

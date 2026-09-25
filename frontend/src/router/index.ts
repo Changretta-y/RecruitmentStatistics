@@ -11,6 +11,9 @@ import ApplicationsView from "../views/ApplicationsView.vue";
 import ApplicationFormView from "../views/ApplicationFormView.vue";
 import LoginView from "../views/LoginView.vue";
 import RegisterView from "../views/RegisterView.vue";
+import CalendarView from "../views/CalendarView.vue";
+import NotificationSettingsView from "../views/NotificationSettingsView.vue";
+import NotificationVerifyView from "../views/NotificationVerifyView.vue";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -31,6 +34,24 @@ const routes: RouteRecordRaw[] = [
     path: "/applications",
     name: "applications",
     component: ApplicationsView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/calendar",
+    name: "calendar",
+    component: CalendarView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/notification-settings",
+    name: "notification-settings",
+    component: NotificationSettingsView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/notification-settings/verify",
+    name: "notification-settings-verify",
+    component: NotificationVerifyView,
     meta: { requiresAuth: true },
   },
   {
