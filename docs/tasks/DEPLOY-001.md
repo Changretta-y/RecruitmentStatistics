@@ -1,6 +1,6 @@
 # DEPLOY-001 通过发布流水线部署日历与通知功能
 
-- 状态：`TEST_PASSED`
+- 状态：`DONE`
 - 用户价值：通过现有 Jenkins `release` 流水线将已验收的日历、时长与通知功能安全部署到 HTTP 公网入口。
 - 范围：Compose 生产变量、每日邮件调度容器、HTTP/IP 部署设置、Jenkins release 部署选择、发布前数据库备份和发布后冒烟。
 - 非范围：购买/申请域名、配置 HTTPS、代管第三方邮箱、承诺 SMTP 收件箱送达、浏览器扩展发布。
@@ -39,13 +39,14 @@
 ## Agent 交接
 
 - 任务编号：`DEPLOY-001`
-- 当前状态：`TEST_PASSED`
+- 当前状态：`DONE`
 - 发送角色：测试 Agent
 - 接收角色：项目管理 Agent
-- 已完成内容与产物：实现说明 `docs/implementation-notes/DEPLOY-001.md`；RED 配置测试 `tests/e2e/deploy_001_compose_config.ps1`、RED 报告 `docs/test-reports/DEPLOY-001-red.md`；独立复测失败报告 `docs/test-reports/DEPLOY-001-test-failed.md`；修复后独立通过报告 `docs/test-reports/DEPLOY-001-test-passed.md`（7/7）。
-- 测试范围限制：只解析隔离副本 Compose 配置与静态检查 Jenkins 合同；尚未实际发布、执行迁移/备份/权限检查、生产 HTTP 冒烟或 SMTP 投递。
+- 已完成内容与产物：实现说明 `docs/implementation-notes/DEPLOY-001.md`；RED 配置测试 `tests/e2e/deploy_001_compose_config.ps1`、RED 报告 `docs/test-reports/DEPLOY-001-red.md`；独立复测失败报告 `docs/test-reports/DEPLOY-001-test-failed.md`；修复后独立通过报告 `docs/test-reports/DEPLOY-001-test-passed.md`（7/7）；生产验收记录 `docs/acceptance/DEPLOY-001.md`。
+- 生产部署：Jenkins build #11 成功，revision `2db9b15` 已上线。发布备份 `/root/backups/job-20260926T121317Z.dump`（root、0600）；db/backend/frontend healthy；通知迁移成功；公网首页和日历路由 HTTP 200、health 冒烟成功、未认证日历 API 预期 401。
+- 限制：SMTP 上游参数仍待用户提供，`ENABLE_DAILY_EMAILS=false`，邮件 scheduler 未启用；不得宣称真实投递已验证。
 - 输入文档：本任务单、README 部署段、Jenkinsfile、`docs/acceptance/REL-001.md`、DEPLOY-001 RED 脚本/报告、实现说明及所有已完成业务任务通过报告。
 - 建议命令：使用固定 SSH 别名将当前 Compose/Jenkins 副本复制到隔离临时目录，以合成 env 执行 `docker compose config`；enabled 测试显式使用 `--profile daily-email`。不得读取或修改 `/root/job/.env`、运行服务或打印真实凭据。
 - 结果或风险：实现自检中必需密钥、SMTP 透传和 HTTP 安全检查通过；邮件 scheduler/profile 两项需独立复测，真实 SMTP 参数仍待用户提供。服务器真实数据库已生成 root-only 备份；本轮实现未触发部署。
 - 已修复：scheduler 依赖 backend `service_healthy`；Jenkins release guard 兼容 `BRANCH_NAME`、`GIT_BRANCH` 等来源；HTTP 安全环境项改为 `SECURE_SSL_REDIRECT`、`SECURE_HSTS_SECONDS`、`SESSION_COOKIE_SECURE`、`CSRF_COOKIE_SECURE`。
-- 本阶段完成条件：项目管理 Agent 根据 TEST_PASSED 记录配置验收；用户已授权的生产发布仍需按流水线完成，并补记运行时验收后才能将任务标记 DONE。
+- 本阶段完成条件：测试证据与生产流水线、备份、迁移和线上 HTTP 冒烟记录齐全后，由项目管理 Agent 标记 DONE。SMTP 后续启用和真实投递验证需另补配置记录。

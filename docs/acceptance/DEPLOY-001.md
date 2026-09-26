@@ -1,6 +1,6 @@
 # DEPLOY-001 验收记录
 
-- 状态：`ACCEPTING`
+- 状态：`DONE`
 - 验收角色：项目管理 Agent
 - 任务单：`docs/tasks/DEPLOY-001.md`
 - 独立测试报告：`docs/test-reports/DEPLOY-001-test-passed.md`
@@ -12,10 +12,17 @@
 - [x] SMTP 未配置时不启用邮件调度；显式启用时 scheduler 等待 backend 健康，并执行每日摘要命令。
 - [x] Jenkins release 来源检查兼容 `BRANCH_NAME`/`GIT_BRANCH`；HTTP IP 不强制 HTTPS，也不启用 HSTS 和 secure cookies。
 
-## 尚待完成的生产验收
+## 生产发布验收
 
-- [ ] 将已验收功能提交到 `release` 并经 Jenkins 流水线部署。
-- [ ] 确认备份文件及权限、生产容器状态、数据库迁移和线上首页/health/日历冒烟。
-- [ ] SMTP 参数未提供。本次保持 `ENABLE_DAILY_EMAILS=false`；真实邮箱验证和收件投递不作为本次验收通过项。
+- [x] 已验收功能提交到 `release`，Jenkins `RecruitmentStatistics-CI-CD` build #11 成功，部署 revision `2db9b15`。
+- [x] 发布前数据库备份 `/root/backups/job-20260926T121317Z.dump` 存在，属主 root、权限 `0600`。
+- [x] `db`、`backend`、`frontend` 均健康；通知迁移 `0001_initial`、`0002_daily_delivery` 成功应用。
+- [x] 服务器公网 HTTP 首页和 `/calendar` 均返回 200；health API 冒烟成功；未认证日历 API 返回预期 401。
+- [x] 数据库密码和 Django secret 已轮换为随机值并写入服务器部署 env；该文件不入库，权限为 root 管理、`0640`，Jenkins 执行身份只读。
+- [x] `ENABLE_DAILY_EMAILS=false`，生产未创建邮件 scheduler。
 
-只有上述生产部署与 HTTP 冒烟通过后，才把任务更新为 `DONE`。邮件调度需在后续配置上游 SMTP 后另行验证。
+## 后续邮件配置
+
+用户尚未提供可用上游 SMTP 主机、认证凭据和获准使用的 From 邮箱。应用已部署，但通知验证/投递和每日摘要邮件保持关闭；提供这些参数后需安全写入服务器 env、启用邮件调度并验证实际投递。
+
+部署与日历功能验收完成。实际 SMTP 投递不在本次完成声明内。
