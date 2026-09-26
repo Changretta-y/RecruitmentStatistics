@@ -13,6 +13,7 @@
 - 数据库迁移：由 backend 容器现有启动流程运行；本任务没有新增迁移。
 - 配置变化：服务器 `/opt/deploy/job/.env` 必须设置随机 `DJANGO_SECRET_KEY`、适用于 PostgreSQL URL 的 URL-safe `POSTGRES_PASSWORD`、正确 HTTP IP `DJANGO_ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS`/`FRONTEND_BASE_URL`。没有真实可用上游 SMTP 参数时保持 `ENABLE_DAILY_EMAILS` 未启用；邮件账户凭据未写入代码或提交文件。
 - 已知限制：Jenkins agent 需要访问 Docker daemon，并且宿主机允许 daemon bind mount `/root/backups`。SMTP 实际连通、发件方授权和收件箱到达需要真实服务商配置后单独验证；本轮未触发发布，没有修改实际服务器 `.env` 或运行服务。HTTP 公网流量不加密。
+- 运维权限要求：服务器 `/opt/deploy/job/.env` 必须由 root 管理，并以只读方式授权给 Jenkins 执行身份读取；例如文件属主为 `root`、属组为 Jenkins 专用组且权限为 `0640`。不得通过向 Jenkins 开放写权限或向其他用户开放读取权限解决访问问题。Jenkins release job #10 曾因文件不可读在环境检查阶段停止，Build、Backup、Deploy 均未执行，生产服务未改变；宿主机已由管理员调整为 root 管理并授予 Jenkins 组只读权限，容器内已验证可读。新的 release commit 会触发自动重跑。
 - 自检结果：修复后通过 `tests/e2e/deploy_001_compose_config.ps1` 的七项合成配置检查。该脚本只将临时配置副本和合成环境变量传至隔离远端目录，执行 Compose `config`，没有启动/停止服务或读取服务器 `.env`；该实现自检不代替测试 Agent 独立复测。
 - 建议复测命令：`& .\tests\e2e\deploy_001_compose_config.ps1`，并由测试角色分别用不含 SMTP 的合成环境确认 scheduler profile 未启用、用全套合成 SMTP 且 `ENABLE_DAILY_EMAILS=true` 确认 service/profile/命令和所有参数；不得启动或改动生产服务。
 - 测试完整性声明：未修改测试脚本、断言或测试报告。
