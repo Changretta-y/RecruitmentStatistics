@@ -16,12 +16,12 @@ const record = (owner: number, company = `用户${owner}专属公司`) => ({
   id: owner * 10, company_name: company, position_name: '测试工程师',
   application_status: 'in_progress', current_stage: 'first_interview',
   application_url: `https://jobs.example.com/role/${owner}`, application_time: date,
-  ai_interview_time: date, ai_interview_duration: 30,
-  written_test_time: date, written_test_duration: 45,
-  first_interview_time: date, first_interview_duration: 60,
-  second_interview_time: null, second_interview_duration: null,
-  third_interview_time: null, third_interview_duration: null,
-  hr_interview_time: null, hr_interview_duration: null,
+  ai_interview_time: date, ai_interview_duration_minutes: 30,
+  written_test_time: date, written_test_duration_minutes: 45,
+  first_interview_time: date, first_interview_duration_minutes: 60,
+  second_interview_time: null, second_interview_duration_minutes: null,
+  third_interview_time: null, third_interview_duration_minutes: null,
+  hr_interview_time: null, hr_interview_duration_minutes: null,
   created_at: date, updated_at: date,
 });
 const pagination = (results: unknown[], page = 1, pageSize = 20, count = results.length) =>
@@ -235,12 +235,14 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     const centered = await box(panel(page));
     expect(Math.abs(centered.x + centered.width / 2 - (main.x + main.width / 2))).toBeLessThan(main.width * .18);
     expect(centered.y + centered.height / 2).toBeGreaterThan(main.y + main.height * .25);
+    await page.screenshot({ path: '../docs/test-reports/WEB-SHARE-001-centered.png', fullPage: true, animations: 'disabled' });
     await pick(page);
     await expect.poll(async () => (await box(panel(page))).width).toBeLessThan(centered.width * .9);
     const corner = await box(panel(page));
     expect(corner.x).toBeGreaterThan(centered.x);
     expect(corner.y).toBeLessThan(main.y + main.height * .3);
     expect(corner.x + corner.width).toBeLessThanOrEqual(main.x + main.width + 2);
+    await page.screenshot({ path: '../docs/test-reports/WEB-SHARE-001-selected.png', fullPage: true, animations: 'disabled' });
     await panel(page).getByRole('button', { name: '返回用户选择', exact: true }).click();
     await expect(records(page)).toBeHidden();
     await expect.poll(async () => (await box(panel(page))).width).toBeGreaterThan(corner.width * 1.1);
@@ -252,6 +254,7 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await expect(records(page)).toContainText('测试工程师');
     for (const label of [/AI.*面试/, /笔试/, /一面|第一轮面试/, /二面|第二轮面试/, /三面|第三轮面试/, /HR.*面试/])
       await expect(records(page)).toContainText(label);
+    for (const minutes of [30, 45, 60]) await expect(records(page)).toContainText(new RegExp(`${minutes}\\s*分钟`));
     await expect(records(page).getByRole('link').filter({ hasText: /投递|链接/ }).first()).toHaveAttribute('href', record(A.id).application_url);
     await expect(records(page).getByRole('button', { name: /编辑|删除/ })).toHaveCount(0);
     await expect(records(page)).not.toContainText('个人备注');

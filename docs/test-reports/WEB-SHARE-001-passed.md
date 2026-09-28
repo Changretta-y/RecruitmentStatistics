@@ -65,3 +65,9 @@
 - 已完成产物：原 RED、17 项公开 UI 测试、真实双用户 E2E、浏览器 / 单元运行器分离配置与本独立通过报告。
 - 验收建议：按任务单复核宽面板 / 右上窄面板视觉、侧栏保持及真实解除行为；验收记录明确保留全量 86 / 90 与认证不稳定风险。
 - 完成门禁：仅项目管理 Agent 可在验收及交付物齐全后设置 DONE。
+
+## 交付截图补充
+
+- 复用原已通过的几何测试保存两张公开 UI PNG：`docs/test-reports/WEB-SHARE-001-centered.png`（未选用户居中宽面板）、`docs/test-reports/WEB-SHARE-001-selected.png`（已选用户、右上窄面板、只读记录）。两张均由既有 HTTP mock 数据生成，不含密码或 Token；已打开图片视觉检查。
+- 截图时发现测试夹具时长键缺少 `_minutes`，与 APP-008 公开 `*_duration_minutes` 契约不一致；仅修正六个自有夹具键并添加 30 / 45 / 60 分钟可见断言。生产实现未改动，PM 真实 75 分钟记录验收已通过，未将夹具错误归因为生产问题或伪造 RED。
+- 仅复跑 `npm run test:sharing -- --grep 'selecting user animates|record display is read only'`，**2 / 0** 通过；重新生成的选中截图正确显示三个阶段时长。未重复全量或改变任何既有失败 / 超时门槛，原任务验收状态保持。
