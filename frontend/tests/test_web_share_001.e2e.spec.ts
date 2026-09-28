@@ -170,7 +170,7 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await expect(panel(page)).toContainText(String(ME.id));
     await expect(panel(page)).toContainText(/同意后双方可互相查看/);
     await expect(panel(page)).toContainText(/个人备注不共享/);
-    await expect(panel(page).getByRole('button', { name: '申请互看', exact: true })).toHaveCount(10);
+    await expect(panel(page).getByRole('button', { name: '申请共享', exact: true })).toHaveCount(10);
     await expect(panel(page)).toContainText(incomingUser.username);
     await expect(panel(page)).toContainText(outgoingUser.username);
     const before = state.calls.filter(c => c.path.endsWith('/recommendations/')).length;
@@ -191,7 +191,7 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await expect(panel(page).getByLabel('用户 ID', { exact: true })).toHaveValue('501');
     await panel(page).getByRole('button', { name: '搜索用户', exact: true }).click();
     await expect(panel(page)).toContainText('共享用户501');
-    await panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请互看', exact: true }).click();
+    await panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请共享', exact: true }).click();
     await expect.poll(() => state.calls.filter(c => c.path === '/sharing/requests/' && c.method === 'POST' && c.body.recipient_id === 501).length).toBe(1);
     await expect(panel(page)).toContainText(/待对方同意|待处理/);
     expect(state.calls.some(c => c.path === '/sharing/users/501/applications/')).toBe(false);
@@ -200,11 +200,11 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
   test('recommendation sends request, handles operation failure and prevents duplicate requests', async ({ page }) => {
     await openSharing(page);
     state.mutationFailures = 1;
-    await panel(page).getByRole('button', { name: '申请互看', exact: true }).first().click();
+    await panel(page).getByRole('button', { name: '申请共享', exact: true }).first().click();
     await expect(panel(page)).toContainText(/失败|重试/);
-    await panel(page).getByRole('button', { name: '申请互看', exact: true }).first().click();
+    await panel(page).getByRole('button', { name: '申请共享', exact: true }).first().click();
     await expect.poll(() => state.outgoing.some(r => r.recipient.id === 301)).toBe(true);
-    await expect(panel(page).getByRole('button', { name: '申请互看', exact: true })).toHaveCount(9);
+    await expect(panel(page).getByRole('button', { name: '申请共享', exact: true })).toHaveCount(9);
     expect(state.calls.filter(c => c.method === 'POST' && c.path === '/sharing/requests/' && c.body.recipient_id === 301)).toHaveLength(2);
   });
 
@@ -344,10 +344,10 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await openSharing(page);
     await searchId(page, String(outgoingUser.id));
     const pendingRow = panel(page).getByRole('listitem').filter({ hasText: outgoingUser.username });
-    await expect(pendingRow.getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+    await expect(pendingRow.getByRole('button', { name: '申请共享', exact: true })).toHaveCount(0);
     await searchId(page, String(A.id));
     const connectedRow = panel(page).getByRole('listitem').filter({ hasText: A.username });
-    await expect(connectedRow.getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+    await expect(connectedRow.getByRole('button', { name: '申请共享', exact: true })).toHaveCount(0);
     const before = state.calls.filter(c => c.path === '/sharing/requests/' && c.method === 'GET').length;
     await page.route('**/api/v1/sharing/requests/', async route => {
       if (route.request().method() !== 'POST') return route.fallback();
@@ -356,10 +356,10 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
       await json(route, 409, { code: 'SHARING_CONFLICT', message: '申请状态已变化，请刷新' });
     });
     await searchId(page, '501');
-    await panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请互看', exact: true }).click();
+    await panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请共享', exact: true }).click();
     await expect.poll(() => state.calls.filter(c => c.path === '/sharing/requests/' && c.method === 'GET').length).toBeGreaterThan(before);
     await expect(panel(page)).toContainText(/状态已变化|待对方同意|待处理/);
-    await expect(panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+    await expect(panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请共享', exact: true })).toHaveCount(0);
   });
 
   test('in-flight application submission is disabled and produces exactly one POST', async ({ page }) => {
@@ -376,7 +376,7 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
       state.recommendations = state.recommendations.filter(u => u.id !== recipient.id);
       await json(route, 201, item);
     });
-    const submit = panel(page).getByRole('listitem').filter({ hasText: '共享用户301' }).getByRole('button', { name: '申请互看', exact: true });
+    const submit = panel(page).getByRole('listitem').filter({ hasText: '共享用户301' }).getByRole('button', { name: '申请共享', exact: true });
     await submit.click();
     await expect.poll(() => attempts).toBe(1);
     await expect(submit).toBeDisabled();

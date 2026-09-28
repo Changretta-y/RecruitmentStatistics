@@ -59,7 +59,7 @@ test('WEB-SHARE-001 real two-user consent, reciprocal read-only records and unil
     await panel(pageA).getByLabel('用户 ID', { exact: true }).fill(String(b.id));
     await panel(pageA).getByRole('button', { name: '搜索用户', exact: true }).click();
     const searched = panel(pageA).getByRole('listitem').filter({ hasText: b.username });
-    await searched.getByRole('button', { name: '申请互看', exact: true }).last().click();
+    await searched.getByRole('button', { name: '申请共享', exact: true }).last().click();
     await expect(panel(pageA)).toContainText(/待对方同意|待处理/);
     const stillDenied = await request.get(`${API}/api/v1/sharing/users/${b.id}/applications/`, { headers: headers(a.access) });
     expect(stillDenied.status()).toBe(404);
