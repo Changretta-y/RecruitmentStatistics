@@ -8,6 +8,7 @@ import { VCardText } from "vuetify/components/VCard";
 import { VContainer } from "vuetify/components/VGrid";
 import { VProgressCircular } from "vuetify/components/VProgressCircular";
 
+import AppShell from "../components/AppShell.vue";
 import { getApplication } from "../api/applications";
 import ApplicationForm from "../components/ApplicationForm.vue";
 import type { JobApplication } from "../types/application";
@@ -47,24 +48,26 @@ onMounted(() => {
 </script>
 
 <template>
-  <VContainer class="application-form-page py-8 py-md-12">
-    <div v-if="loading" class="state-panel" role="status">
-      <VProgressCircular color="primary" indeterminate size="42" />
-      <span>加载中…</span>
-    </div>
-    <VCard v-else-if="loadError" class="state-card mx-auto" max-width="760" elevation="2">
-      <VCardText class="state-panel" role="alert">
-        <VAlert type="error" variant="tonal" class="mb-5">{{ loadError }}</VAlert>
-        <VBtn type="button" color="primary" @click="backToApplications">返回投递列表</VBtn>
-      </VCardText>
-    </VCard>
-    <ApplicationForm
-      v-else-if="!isEdit || application"
-      :mode="isEdit ? 'edit' : 'create'"
-      :application="application"
-      @close="backToApplications"
-    />
-  </VContainer>
+  <AppShell :title="isEdit ? '编辑投递' : '新增投递'">
+    <VContainer class="application-form-page py-8 py-md-12">
+      <div v-if="loading" class="state-panel" role="status">
+        <VProgressCircular color="primary" indeterminate size="42" />
+        <span>加载中…</span>
+      </div>
+      <VCard v-else-if="loadError" class="state-card mx-auto" max-width="760" elevation="2">
+        <VCardText class="state-panel" role="alert">
+          <VAlert type="error" variant="tonal" class="mb-5">{{ loadError }}</VAlert>
+          <VBtn type="button" color="primary" @click="backToApplications">返回投递列表</VBtn>
+        </VCardText>
+      </VCard>
+      <ApplicationForm
+        v-else-if="!isEdit || application"
+        :mode="isEdit ? 'edit' : 'create'"
+        :application="application"
+        @close="backToApplications"
+      />
+    </VContainer>
+  </AppShell>
 </template>
 
 <style scoped>

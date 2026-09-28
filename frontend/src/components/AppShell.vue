@@ -15,6 +15,7 @@ import { useAuthStore } from "../stores/auth";
 withDefaults(defineProps<{ title?: string }>(), { title: "我的投递进度" });
 
 const drawerOpen = ref(false);
+const desktopSidebarExpanded = ref(true);
 const { mobile } = useDisplay();
 const auth = useAuthStore();
 const router = useRouter();
@@ -22,6 +23,10 @@ const username = () => {
   const user = auth.user as Record<string, unknown> | null;
   return user?.username ? String(user.username) : "";
 };
+
+function updateDrawerState(open: boolean): void {
+  if (mobile.value) drawerOpen.value = open;
+}
 
 async function logout(): Promise<void> {
   const navigation = router.push({ path: "/login" });
@@ -32,8 +37,9 @@ async function logout(): Promise<void> {
 
 <template>
   <VNavigationDrawer
-    :model-value="!mobile || drawerOpen"
-    @update:model-value="drawerOpen = $event"
+    v-if="mobile || desktopSidebarExpanded"
+    :model-value="mobile ? drawerOpen : true"
+    @update:model-value="updateDrawerState"
     :permanent="!mobile"
     :temporary="mobile"
     location="left"
@@ -53,6 +59,13 @@ async function logout(): Promise<void> {
 
   <VAppBar color="surface" elevation="1" class="app-bar px-2 px-md-6">
     <VBtn v-if="mobile" icon="mdi-menu" variant="text" aria-label="打开导航" @click="drawerOpen = !drawerOpen" />
+    <VBtn
+      v-else
+      :icon="desktopSidebarExpanded ? 'mdi-menu-open' : 'mdi-menu'"
+      variant="text"
+      :aria-label="desktopSidebarExpanded ? '收起侧边栏' : '展开侧边栏'"
+      @click="desktopSidebarExpanded = !desktopSidebarExpanded"
+    />
     <div class="app-title text-primary">{{ title }}</div>
     <VSpacer />
     <VBtn variant="text" prepend-icon="mdi-bell-outline" to="/notification-settings">通知设置</VBtn>
