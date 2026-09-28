@@ -1,5 +1,5 @@
 import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    // Browser E2E specs have their own Playwright runner and configuration.
+    exclude: [...configDefaults.exclude, "**/*.e2e.spec.ts"],
     environment: "node",
     setupFiles: ["./tests/setup.ts"],
     server: {

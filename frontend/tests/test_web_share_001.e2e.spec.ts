@@ -337,6 +337,75 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await expect.poll(() => avatarImages.evaluateAll(images => images.map(el => el.tagName === 'IMG' ? (el as HTMLImageElement).src : el.innerHTML))).toEqual(signatures);
   });
 
+  test('pending and connected search results cannot resend; a conflict refreshes authoritative request state', async ({ page }) => {
+    await openSharing(page);
+    await searchId(page, String(outgoingUser.id));
+    const pendingRow = panel(page).getByRole('listitem').filter({ hasText: outgoingUser.username });
+    await expect(pendingRow.getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+    await searchId(page, String(A.id));
+    const connectedRow = panel(page).getByRole('listitem').filter({ hasText: A.username });
+    await expect(connectedRow.getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+    const before = state.calls.filter(c => c.path === '/sharing/requests/' && c.method === 'GET').length;
+    await page.route('**/api/v1/sharing/requests/', async route => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      const recipient = user(501, 'outgoing_pending');
+      state.outgoing.unshift(requestItem(1501, ME, recipient));
+      await json(route, 409, { code: 'SHARING_CONFLICT', message: '申请状态已变化，请刷新' });
+    });
+    await searchId(page, '501');
+    await panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请互看', exact: true }).click();
+    await expect.poll(() => state.calls.filter(c => c.path === '/sharing/requests/' && c.method === 'GET').length).toBeGreaterThan(before);
+    await expect(panel(page)).toContainText(/状态已变化|待对方同意|待处理/);
+    await expect(panel(page).getByRole('listitem').filter({ hasText: '共享用户501' }).getByRole('button', { name: '申请互看', exact: true })).toHaveCount(0);
+  });
+
+  test('in-flight application submission is disabled and produces exactly one POST', async ({ page }) => {
+    await openSharing(page);
+    let release: () => void = () => {};
+    let attempts = 0;
+    await page.route('**/api/v1/sharing/requests/', async route => {
+      if (route.request().method() !== 'POST') return route.fallback();
+      attempts += 1;
+      await new Promise<void>(resolve => { release = resolve; });
+      const recipient = user(301, 'outgoing_pending');
+      const item = requestItem(1301, ME, recipient);
+      state.outgoing.unshift(item);
+      state.recommendations = state.recommendations.filter(u => u.id !== recipient.id);
+      await json(route, 201, item);
+    });
+    const submit = panel(page).getByRole('listitem').filter({ hasText: '共享用户301' }).getByRole('button', { name: '申请互看', exact: true });
+    await submit.click();
+    await expect.poll(() => attempts).toBe(1);
+    await expect(submit).toBeDisabled();
+    release();
+    await expect(panel(page)).toContainText(/待对方同意|待处理/);
+    expect(attempts).toBe(1);
+  });
+
+  test('late search response cannot replace newer results for the same shared user', async ({ page }) => {
+    await openSharing(page); await pick(page);
+    let release: () => void = () => {};
+    let oldSearchRequested = false;
+    await page.route('**/api/v1/sharing/users/201/applications/**', async route => {
+      const search = new URL(route.request().url()).searchParams.get('search');
+      if (search === '旧搜索') {
+        oldSearchRequested = true;
+        await new Promise<void>(resolve => { release = resolve; });
+      }
+      await json(route, 200, pagination([record(201, `${search}匹配公司`)]));
+    });
+    const searchBox = records(page).getByRole('textbox', { name: /公司|岗位|搜索/ }).first();
+    const searchButton = records(page).getByRole('button', { name: /搜索|查询/ }).first();
+    await searchBox.fill('旧搜索'); await searchButton.click();
+    await expect.poll(() => oldSearchRequested).toBe(true);
+    await searchBox.fill('新搜索'); await searchButton.click();
+    await expect(records(page)).toContainText('新搜索匹配公司');
+    release();
+    await page.waitForTimeout(350);
+    await expect(records(page)).toContainText('新搜索匹配公司');
+    await expect(records(page)).not.toContainText('旧搜索匹配公司');
+  });
+
   test('mobile drawer, user selection and reduced motion layout remain usable without overflow', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
