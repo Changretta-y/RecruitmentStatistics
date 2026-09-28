@@ -22,7 +22,7 @@ function unpackArtifact() {
 
 function cleanupArtifact(workspace: string) {
   if (dirname(workspace) !== tmpdir() || !basename(workspace).startsWith('ext-auth-001-')) throw new Error('unsafe temporary path');
-  rmSync(workspace, { recursive: true, force: true });
+  rmSync(workspace, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
 }
 
 type Observation = { origin: string; path: string; method: string; authenticated: boolean };
@@ -92,10 +92,13 @@ async function fixture(): Promise<Fixture & { close: () => Promise<void> }> {
   server.on('connect', (_request, socket) => socket.destroy()); // No HTTPS tunnels / external traffic.
   await new Promise<void>(resolveReady => server.listen(0, '127.0.0.1', resolveReady));
   const port = (server.address() as { port: number }).port;
-  let context: BrowserContext;
+  let context: BrowserContext | undefined;
   try {
+    const channel = process.env.EXT_AUTH_BROWSER_CHANNEL || 'chromium';
+    if (!['chromium', 'chrome', 'msedge'].includes(channel)) throw new Error('unsupported test browser channel');
     context = await chromium.launchPersistentContext(join(workspace, 'profile'), {
-      channel: 'chromium', headless: true,
+      channel, headless: true,
+      ignoreDefaultArgs: ['--disable-extensions'],
       proxy: { server: `http://127.0.0.1:${port}`, bypass: '<-loopback>' },
       args: [`--disable-extensions-except=${unpacked}`, `--load-extension=${unpacked}`,
         '--host-resolver-rules=MAP * 127.0.0.1, EXCLUDE localhost', '--disable-background-networking'],
@@ -119,6 +122,7 @@ async function fixture(): Promise<Fixture & { close: () => Promise<void> }> {
       },
     };
   } catch (error) {
+    await context?.close();
     server.closeAllConnections();
     await new Promise<void>(resolveClosed => server.close(() => resolveClosed()));
     cleanupArtifact(workspace);
