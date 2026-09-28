@@ -53,6 +53,7 @@ async function logout(): Promise<void> {
     <VList nav density="comfortable">
       <VListItem prepend-icon="mdi-view-dashboard-outline" title="我的投递进度" to="/applications" @click="drawerOpen = false" />
       <VListItem prepend-icon="mdi-calendar-month-outline" title="日历" to="/calendar" @click="drawerOpen = false" />
+      <VListItem prepend-icon="mdi-account-switch-outline" title="投递共享" to="/sharing" @click="drawerOpen = false" />
       <VListItem prepend-icon="mdi-plus-circle-outline" title="新增投递" to="/applications/new" @click="drawerOpen = false" />
     </VList>
   </VNavigationDrawer>

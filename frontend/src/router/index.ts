@@ -14,8 +14,10 @@ import RegisterView from "../views/RegisterView.vue";
 import CalendarView from "../views/CalendarView.vue";
 import NotificationSettingsView from "../views/NotificationSettingsView.vue";
 import NotificationVerifyView from "../views/NotificationVerifyView.vue";
+import SharingView from "../views/SharingView.vue";
 
 const routes: RouteRecordRaw[] = [
+  { path: "/sharing", name: "sharing", component: SharingView, meta: { requiresAuth: true } },
   {
     path: "/",
     redirect: "/applications",
