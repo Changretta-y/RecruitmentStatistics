@@ -10,7 +10,7 @@ defineEmits<{ request: [user: SharingUser] }>();
   <li class="user-row">
     <SharingAvatar :avatar="user.avatar" :username="user.username" />
     <div class="user-details"><strong>{{ user.username }}</strong><small>ID {{ user.id }}</small></div>
-    <button v-if="user.relationship === 'none'" class="sharing-action" :disabled="busy" @click="$emit('request', user)">申请互看</button>
+    <button v-if="user.relationship === 'none'" class="sharing-action" :disabled="busy" @click="$emit('request', user)">申请共享</button>
     <small v-else class="relationship">{{ user.relationship === 'connected' ? '已共享' : user.relationship === 'incoming_pending' ? '待我同意' : '待对方同意' }}</small>
   </li>
 </template>
