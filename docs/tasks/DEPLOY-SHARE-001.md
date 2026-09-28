@@ -1,6 +1,6 @@
 # DEPLOY-SHARE-001 上线投递共享与申请共享文案
 
-- 状态：IMPLEMENTING
+- 状态：DONE
 - 用户授权：用户明确要求“上线”。
 - 用户价值：已验收共享功能和新按钮文案在现有生产入口可用。
 - 依赖：SHARE-001、WEB-SHARE-001、WEB-SHARE-002均DONE；沿用DEPLOY-001 Jenkins release唯一发布流程。
@@ -20,13 +20,21 @@
 
 ## 验收标准
 
-- [ ] 默认10及部署配置透传通过，已验收业务与18项文案回归证据齐全。
-- [ ] Jenkins实际发布正确release revision并SUCCESS，备份权限/大小、迁移与容器健康证据齐全。
-- [ ] 生产共享页面/API/新文案/已有头像聚合检查通过，独立TEST_PASSED后PM验收。
-- [ ] 无关未提交文件保留，未改真实用户共享或SMTP设置。
+- [x] 默认10及部署配置透传通过，已验收业务与18项文案回归证据齐全。
+- [x] Jenkins实际发布正确release revision并SUCCESS，备份权限/大小、迁移与容器健康证据齐全。
+- [x] 生产共享页面/API/新文案/已有头像聚合检查通过，独立TEST_PASSED后PM验收。
+- [x] 无关未提交文件保留，未改真实用户共享或SMTP设置。
 
 ## 交接
 
 测试Agent先只读preflight确认线上差异/部署配置缺少透传，出RED报告；实现Agent随后只做必要配置和发布，READY_FOR_TEST后交原测试Agent独立线上检查。已通过业务测试无需重跑全量。
 
 - RED报告：`docs/test-reports/DEPLOY-SHARE-001-red.md`，提交`04c8bb8`；线上五个共享GET均404而非期望401，既有首页/health200、容器健康；推荐配置尚未传入。只读上线差异确认，未动真实用户数据。
+- 发布目标：`24d035f9f1c2188f8ed1147ca0f2ff494b3f3eb5`，已成功推至deploy远端release；只包含已提交验收功能、按钮文案、配置与证据，无关未提交内容保留。等待Jenkins实际构建结果，发布记录后续本地补记，不为文档再次推送。
+
+## 验收交接
+
+- 实现READY说明：`docs/implementation-notes/DEPLOY-SHARE-001.md`；说明、合成Compose默认10/显式3检查先提交远端代码提交，再提交本地证据`9784772`。
+- 独立测试：`docs/test-reports/DEPLOY-SHARE-001-passed.md`，`46f25c7`，所有上线只读项目通过。
+- 项目管理记录：`docs/acceptance/DEPLOY-SHARE-001.md`。本地提交验收记录，不再push，避免重复部署。
+
