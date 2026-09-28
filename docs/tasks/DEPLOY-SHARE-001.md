@@ -1,6 +1,6 @@
 # DEPLOY-SHARE-001 上线投递共享与申请共享文案
 
-- 状态：TEST_WRITING
+- 状态：IMPLEMENTING
 - 用户授权：用户明确要求“上线”。
 - 用户价值：已验收共享功能和新按钮文案在现有生产入口可用。
 - 依赖：SHARE-001、WEB-SHARE-001、WEB-SHARE-002均DONE；沿用DEPLOY-001 Jenkins release唯一发布流程。
@@ -28,3 +28,5 @@
 ## 交接
 
 测试Agent先只读preflight确认线上差异/部署配置缺少透传，出RED报告；实现Agent随后只做必要配置和发布，READY_FOR_TEST后交原测试Agent独立线上检查。已通过业务测试无需重跑全量。
+
+- RED报告：`docs/test-reports/DEPLOY-SHARE-001-red.md`，提交`04c8bb8`；线上五个共享GET均404而非期望401，既有首页/health200、容器健康；推荐配置尚未传入。只读上线差异确认，未动真实用户数据。
