@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "我的投递采集助手",
+  "version": "0.1.0",
+  "description": "从当前网申页面提取公司和岗位，经确认后同步到我的投递进度。",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [
+    "http://115.190.240.84:5173/*",
+    "http://127.0.0.1:5173/*",
+    "http://localhost:5173/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "采集当前投递",
+    "default_popup": "popup.html"
+  }
+}

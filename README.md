@@ -51,6 +51,12 @@ npm run build
 
 前端通过统一 HTTP 层访问后端，不在页面代码中保存凭据。浏览器端到后端的地址和跨域来源由运行环境配置。
 
+## 浏览器插件
+
+可维护的 Manifest V3 插件源码位于 `frontend/src/browser-extension/`。在仓库根目录使用 Node.js 20.19.0 执行 `npm run build:extension`，会从该源码生成 `artifacts/recruitment-capture-extension-v0.1.0.zip`。生成的 ZIP 只包含浏览器加载所需的 Manifest、后台脚本和弹窗资源。
+
+Chrome 或 Edge 中打开 `chrome://extensions/` 或 `edge://extensions/`，开启开发者模式并选择“加载已解压的扩展”，目录指向 `frontend/src/browser-extension/`。扩展默认经 `http://115.190.240.84:5173/api/` 使用平台 API；本地开发可选择 `127.0.0.1:5173` 或 `localhost:5173`。
+
 ## 测试与 E2E
 
 后端测试：

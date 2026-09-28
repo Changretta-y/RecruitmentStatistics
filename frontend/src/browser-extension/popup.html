@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的投递采集助手</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <div>
+          <p class="eyebrow">RECRUITMENT CAPTURE</p>
+          <h1>我的投递采集助手</h1>
+        </div>
+        <span class="brand-mark" aria-hidden="true">↗</span>
+      </header>
+
+      <div id="global-message" class="message" hidden></div>
+
+      <section id="login-view" class="panel" hidden>
+        <div class="section-heading">
+          <h2>登录投递平台</h2>
+          <p>数据只会写入当前登录账号。</p>
+        </div>
+        <form id="login-form" class="form-stack">
+          <label>
+            <span>服务器</span>
+            <select id="api-origin">
+              <option value="http://115.190.240.84:5173">线上服务器</option>
+              <option value="http://127.0.0.1:5173">本地 127.0.0.1</option>
+              <option value="http://localhost:5173">本地 localhost</option>
+            </select>
+          </label>
+          <label>
+            <span>用户名</span>
+            <input id="username" autocomplete="username" required />
+          </label>
+          <label>
+            <span>密码</span>
+            <input id="password" type="password" autocomplete="current-password" required />
+          </label>
+          <button id="login-button" class="primary" type="submit">登录并开始采集</button>
+        </form>
+        <p class="security-note">密码不会保存。当前线上接口为 HTTP，正式公开使用前建议配置 HTTPS。</p>
+      </section>
+
+      <section id="capture-view" hidden>
+        <div class="account-row">
+          <div>
+            <span class="muted">当前账号</span>
+            <strong id="current-user">-</strong>
+          </div>
+          <div class="row-actions">
+            <button id="recapture-button" class="text-button" type="button">重新采集</button>
+            <button id="logout-button" class="text-button danger" type="button">退出</button>
+          </div>
+        </div>
+
+        <section class="panel capture-panel">
+          <div class="section-heading">
+            <h2>当前投递</h2>
+            <p id="page-state">正在读取当前页面…</p>
+          </div>
+
+          <form id="application-form" class="form-stack">
+            <label>
+              <span>公司名称 <small id="company-source"></small></span>
+              <div class="input-action">
+                <input id="company-name" required />
+                <button data-select-field="company" class="secondary compact" type="button">页面点选</button>
+              </div>
+            </label>
+            <label>
+              <span>岗位名称 <small id="position-source"></small></span>
+              <div class="input-action">
+                <input id="position-name" required />
+                <button data-select-field="position" class="secondary compact" type="button">页面点选</button>
+              </div>
+            </label>
+            <label>
+              <span>投递链接</span>
+              <input id="application-url" type="url" placeholder="https://…" />
+            </label>
+            <div class="grid-two">
+              <label>
+                <span>投递状态</span>
+                <select id="application-status">
+                  <option value="applied">已投递</option>
+                  <option value="in_progress">流程中</option>
+                  <option value="offer">已录用</option>
+                  <option value="rejected">已拒绝</option>
+                  <option value="withdrawn">已放弃</option>
+                </select>
+              </label>
+              <label>
+                <span>投递时间</span>
+                <input id="application-time" type="datetime-local" step="60" />
+              </label>
+            </div>
+            <div id="warnings" class="warning-list" hidden></div>
+            <button id="preview-button" class="primary" type="submit">生成保存预览</button>
+          </form>
+        </section>
+
+        <section id="preview-panel" class="panel preview-panel" hidden>
+          <div class="section-heading">
+            <h2>保存预览</h2>
+            <p id="preview-summary"></p>
+          </div>
+          <dl id="preview-details" class="preview-details"></dl>
+          <label id="candidate-field" hidden>
+            <span>选择更新目标</span>
+            <select id="candidate-select"></select>
+          </label>
+          <button id="confirm-button" class="primary" type="button">确认写入</button>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

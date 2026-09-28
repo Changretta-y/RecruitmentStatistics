@@ -8,6 +8,7 @@
     "npm": ">=10"
   },
   "scripts": {
+    "build:extension": "node scripts/build-extension.mjs",
     "e2e": "playwright test --config=tests/e2e/playwright.config.ts",
     "test:ext-auth": "playwright test --config=tests/e2e/playwright.ext_auth_001.config.ts",
     "test:install:chromium": "playwright install chromium --force"
