@@ -2,27 +2,21 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import { VAlert } from "vuetify/components/VAlert";
-import { VAppBar } from "vuetify/components/VAppBar";
 import { VBtn } from "vuetify/components/VBtn";
 import { VCard } from "vuetify/components/VCard";
 import { VCardText } from "vuetify/components/VCard";
 import { VChip } from "vuetify/components/VChip";
 import { VContainer } from "vuetify/components/VGrid";
 import { VDialog } from "vuetify/components/VDialog";
-import { VDivider } from "vuetify/components/VDivider";
 import { VIcon } from "vuetify/components/VIcon";
-import { VList } from "vuetify/components/VList";
-import { VListItem } from "vuetify/components/VList";
-import { VListItemTitle } from "vuetify/components/VList";
-import { VNavigationDrawer } from "vuetify/components/VNavigationDrawer";
 import { VProgressLinear } from "vuetify/components/VProgressLinear";
 import { VSelect } from "vuetify/components/VSelect";
-import { VSpacer } from "vuetify/components/VGrid";
 import { VTable } from "vuetify/components/VTable";
 import { VTextField } from "vuetify/components/VTextField";
 
 import { delete as deleteRequest, list } from "../api/applications";
 import DateTimeField from "../components/DateTimeField.vue";
+import AppShell from "../components/AppShell.vue";
 import { useAuthStore } from "../stores/auth";
 import {
   DEFAULT_ORDERING,
@@ -41,8 +35,6 @@ import {
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const projectName = "我的投递进度";
-const drawerOpen = ref(false);
 
 const statusOptions: Array<{ value: ApplicationStatus; title: string }> = [
   { value: "applied", title: "已投递" },
@@ -91,10 +83,6 @@ const deleteLoading = ref(false);
 const deleteError = ref("");
 const successMessage = ref("");
 
-const username = computed(() => {
-  const value = auth.user as Record<string, unknown> | null;
-  return value?.username ? String(value.username) : "";
-});
 const hasResults = computed(() => data.value.results.length > 0);
 const hasNext = computed(() => Boolean(data.value.next) || page.value < data.value.totalPages);
 const hasPrevious = computed(() => Boolean(data.value.previous) || page.value > 1);
@@ -227,12 +215,6 @@ async function performDelete(): Promise<void> {
     deleteLoading.value = false;
   }
 }
-async function logout(): Promise<void> {
-  const navigation = router.push({ path: "/login" });
-  try { await auth.logout(); }
-  finally { await navigation; }
-}
-
 function displayStatus(value: string): string {
   return statusOptions.find((option) => option.value === value)?.title ?? value;
 }
@@ -286,30 +268,7 @@ onMounted(() => { void initializeAndLoad(); });
 </script>
 
 <template>
-  <VNavigationDrawer v-model="drawerOpen" temporary location="left" width="280">
-    <div class="drawer-brand pa-6">
-      <VIcon color="primary" size="30">mdi-briefcase-account</VIcon>
-      <span class="drawer-title">我的投递进度</span>
-    </div>
-    <VDivider />
-    <VList nav density="comfortable">
-      <VListItem prepend-icon="mdi-view-dashboard-outline" title="我的投递进度" to="/applications" @click="drawerOpen = false" />
-      <VListItem prepend-icon="mdi-calendar-month-outline" title="日历" to="/calendar" @click="drawerOpen = false" />
-      <VListItem prepend-icon="mdi-plus-circle-outline" title="新增投递" to="/applications/new" @click="drawerOpen = false" />
-    </VList>
-  </VNavigationDrawer>
-
-  <VAppBar color="surface" elevation="1" class="app-bar px-2 px-md-6">
-    <VBtn icon="mdi-menu" variant="text" aria-label="打开导航" @click="drawerOpen = !drawerOpen" />
-    <div class="app-title text-primary">{{ projectName }}</div>
-    <VSpacer />
-    <VBtn variant="text" prepend-icon="mdi-bell-outline" to="/notification-settings">通知设置</VBtn>
-    <span v-if="username" class="user-name mr-2" aria-label="当前用户">
-      <VIcon size="18" class="mr-1">mdi-account-circle-outline</VIcon>{{ username }}
-    </span>
-    <VBtn variant="text" prepend-icon="mdi-logout-variant" @click="logout">退出</VBtn>
-  </VAppBar>
-
+  <AppShell>
   <VContainer class="applications-page py-6 py-md-10" fluid>
     <div class="page-heading mb-6">
       <div>
@@ -465,13 +424,11 @@ onMounted(() => { void initializeAndLoad(); });
       </VCard>
     </VDialog>
   </VContainer>
+  </AppShell>
 </template>
 
 <style scoped>
-.app-bar { position: sticky; top: 0; z-index: 10; }
-.drawer-brand { display: flex; align-items: center; gap: 12px; color: #182230; }
-.drawer-title, .app-title, .page-title, .create-button { font-size: 1rem; line-height: 1.5; font-weight: 700; }
-.app-title { letter-spacing: .01em; }
+.page-title, .create-button { font-size: 1rem; line-height: 1.5; font-weight: 700; }
 .page-title { margin: 0; color: #182230; }
 .applications-page { max-width: 1480px; }
 .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
@@ -495,7 +452,6 @@ onMounted(() => { void initializeAndLoad(); });
   .page-heading .v-btn { width: 100%; }
   .query-grid { grid-template-columns: 1fr; }
   .pagination-bar { flex-wrap: wrap; }
-  .user-name { display: none; }
 }
 
 

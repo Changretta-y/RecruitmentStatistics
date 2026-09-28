@@ -5,6 +5,7 @@ import { watch } from "vue";
 import { VBtn } from "vuetify/components/VBtn";
 import { VContainer } from "vuetify/components/VGrid";
 
+import AppShell from "../components/AppShell.vue";
 import { getCalendarEvents, type CalendarEvent } from "../api/calendar";
 
 type ViewMode = "month" | "week";
@@ -202,6 +203,7 @@ onMounted(() => { void loadEvents(); });
 </script>
 
 <template>
+  <AppShell title="日历">
   <VContainer class="calendar-page py-6 py-md-8" fluid>
     <header class="calendar-header">
       <div>
@@ -310,6 +312,7 @@ onMounted(() => { void loadEvents(); });
       </section>
     </div>
   </VContainer>
+  </AppShell>
 </template>
 
 <style scoped>
