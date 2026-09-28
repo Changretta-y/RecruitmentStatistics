@@ -59,7 +59,15 @@ INSTALLED_APPS = [
     "backend.apps.calendar_events",
     "backend.apps.notifications",
     "backend.apps.health",
+    "backend.apps.sharing",
 ]
+
+try:
+    SHARING_RECOMMENDATION_COUNT = int(os.environ.get("SHARING_RECOMMENDATION_COUNT", "10"))
+except ValueError as exc:
+    raise ImproperlyConfigured("SHARING_RECOMMENDATION_COUNT must be an integer from 1 to 50.") from exc
+if not 1 <= SHARING_RECOMMENDATION_COUNT <= 50:
+    raise ImproperlyConfigured("SHARING_RECOMMENDATION_COUNT must be an integer from 1 to 50.")
 
 TEMPLATES = [
     {

@@ -2,12 +2,21 @@ from django.core.paginator import InvalidPage, Page
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
+from rest_framework.utils.urls import replace_query_param
 
 
 class JobApplicationPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = "page_size"
     allowed_page_sizes = frozenset({10, 20, 50, 100})
+
+    def get_previous_link(self):
+        # An intentionally empty page beyond the end still has a usable link
+        # back to the last valid page; Page.previous_page_number() validates
+        # the out-of-range value and would otherwise raise InvalidPage.
+        if self.page.number > self.page.paginator.num_pages:
+            return replace_query_param(self.request.build_absolute_uri(), self.page_query_param, self.page.paginator.num_pages)
+        return super().get_previous_link()
 
     def _validation_error(self, field, message):
         raise ValidationError(

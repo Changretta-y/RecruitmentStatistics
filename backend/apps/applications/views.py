@@ -237,7 +237,7 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
             instance = self.get_object()
         except Http404:
             return Response(
-                {"code": "NOT_FOUND"},
+                {"code": "NOT_FOUND", "message": "未找到投递记录。", "details": {}},
                 status=status.HTTP_404_NOT_FOUND,
             )
         serializer = self.get_serializer(instance)
@@ -253,7 +253,7 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
             instance = self.get_object()
         except Http404:
             return Response(
-                {"code": "NOT_FOUND"},
+                {"code": "NOT_FOUND", "message": "未找到投递记录。", "details": {}},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
@@ -282,7 +282,7 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
             instance = self.get_object()
         except Http404:
             return Response(
-                {"code": "NOT_FOUND"},
+                {"code": "NOT_FOUND", "message": "未找到投递记录。", "details": {}},
                 status=status.HTTP_404_NOT_FOUND,
             )
 

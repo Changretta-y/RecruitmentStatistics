@@ -58,7 +58,7 @@ class CalendarEventsView(APIView):
     permission_classes = (IsAuthenticated,)
 
     @extend_schema(
-        parameters=(
+        parameters=[
             OpenApiParameter(
                 "start",
                 OpenApiTypes.DATE,
@@ -73,7 +73,7 @@ class CalendarEventsView(APIView):
                 required=True,
                 description="不包含的结束日期（北京时间），与 start 相差 1 到 42 天。",
             ),
-        ),
+        ],
         responses={
             200: CalendarEventsResponseSerializer,
             400: OpenApiResponse(ErrorResponse),

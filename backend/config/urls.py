@@ -16,4 +16,5 @@ urlpatterns = [
     path("api/v1/", include("backend.apps.notifications.urls")),
     path("api/v1/", include("backend.apps.calendar_events.urls")),
     path("api/v1/applications/", include("backend.apps.applications.urls")),
+    path("api/v1/sharing/", include("backend.apps.sharing.urls")),
 ]
