@@ -8,7 +8,9 @@
     "npm": ">=10"
   },
   "scripts": {
-    "e2e": "playwright test --config=tests/e2e/playwright.config.ts"
+    "e2e": "playwright test --config=tests/e2e/playwright.config.ts",
+    "test:ext-auth": "playwright test --config=tests/e2e/playwright.ext_auth_001.config.ts",
+    "test:install:chromium": "playwright install chromium --force"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1"
