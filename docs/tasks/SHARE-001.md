@@ -1,6 +1,6 @@
 # SHARE-001 互相授权投递记录 API 与默认头像
 
-- 状态：PLANNED
+- 状态：TEST_WRITING
 - 用户价值：同意后双方只读查看投递记录，解除后恢复隔离。
 - 依赖：AUTH-001～004、APP-003～008 已完成；需求 `docs/requirements/SHARE-001.md`。
 - 范围：随机推荐与精确 ID 搜索、申请/通过/拒绝、共享列表/解除、只读分页、随机持久头像（新旧用户）、配置与数据库迁移。
@@ -19,7 +19,7 @@
 5. `POST requests/`：body `{recipient_id:正整数}`，成功 `201` 返回申请项；不存在/停用目标 `404`；自身或非法输入 `400 VALIDATION_ERROR`；该用户对任一方向已有 pending/accepted 申请 `409 SHARING_CONFLICT`。并发不得生成两个有效申请。rejected/revoked 后可重新申请，不覆盖历史。
 6. `POST requests/{request_id}/respond/`：`{decision:'accepted'|'rejected'}`；只有接收人可操作，陌生人或发送人 `404`；非 pending `409 SHARING_CONFLICT`，无效 decision `400`；成功 `200` 返回更新申请。accepted 原子地建立双向只读授权。
 7. `GET connections/`：`{results:[{id, user:公共用户, created_at}]}`，id 为已接受申请 ID；双方均能列出对方，用户停用后不可见且不可读。
-8. `DELETE connections/{connection_id}/`：任一当事人成功 `204`，申请转 revoked；无授权/不存在 `404`；撤销后双方下一次读请求立即 `404`。
+8. `DELETE connections/{connection_id}/`：任一当事人成功 `204`，不需要另一方同意，申请转 revoked；无授权/不存在 `404`；撤销后双方下一次读请求立即 `404`。
 9. `GET users/{user_id}/applications/`：仅已 connected 双方可读，其他情形（含本人）一律 `404`；用 APP-004 分页容器，默认 20/可选 10、20、50、100；非法分页 400，超页 200 空 results；支持 `search` 模糊搜索公司/岗位。稳定按 `-updated_at,-id` 排序。字段为既有投递输出去掉 notes 与 user 信息，包含 application_url 与六阶段 duration。任何非 GET 方法不得修改记录（405 或拒绝）。每次请求检查当前授权，不信任前端参数。
 
 新旧用户均随机分配并持久保存头像；`me`、推荐、搜索、申请和共享用户中的同一人头像一致，刷新不变化；原注册/登录/me 响应无需扩大安全字段契约。必要迁移由实现产出，测试只能通过公开输入输出观察头像。

@@ -1,11 +1,11 @@
 # WEB-SHARE-001 投递共享页面、浮窗与侧栏
 
-- 状态：PLANNED
+- 状态：TEST_WRITING
 - 用户价值：从主侧栏发现用户，申请互看并在同一页面只读浏览对方投递。
 - 依赖：SHARE-001 公开 API；WEB-NAV-001/002 与现有登录布局。
 - 范围：`/sharing`、共享侧栏入口、默认头像展示、居中/右上浮窗、推荐和 ID 搜索、申请处理与历史、共享用户切换/解除、只读投递分页搜索。
 - 非范围：后端、备注共享、通知推送、个人记录编辑流程、部署。
-- 角色：根 Agent 项目管理；share_tests 测试；share_implementation 实现。
+- 角色：根 Agent 项目管理；frontend_share_tests 前端测试；share_implementation 实现。share_tests 独立负责 SHARE-001 后端测试。
 - 可写范围：测试仅 `frontend/tests/`、`tests/e2e/`、`docs/test-reports/` 与必要测试配置；实现仅 `frontend/src/`、`docs/implementation-notes/`；PM 仅需求、任务、验收目录。
 
 ## UI 与 HTTP 公开契约
