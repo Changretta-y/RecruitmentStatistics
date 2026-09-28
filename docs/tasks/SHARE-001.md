@@ -1,6 +1,6 @@
 # SHARE-001 互相授权投递记录 API 与默认头像
 
-- 状态：TEST_WRITING
+- 状态：IMPLEMENTING
 - 用户价值：同意后双方只读查看投递记录，解除后恢复隔离。
 - 依赖：AUTH-001～004、APP-003～008 已完成；需求 `docs/requirements/SHARE-001.md`。
 - 范围：随机推荐与精确 ID 搜索、申请/通过/拒绝、共享列表/解除、只读分页、随机持久头像（新旧用户）、配置与数据库迁移。
@@ -40,3 +40,9 @@
 ## 风险与测试边界
 
 测试不读取/搜索/枚举生产实现，只通过注册/登录/HTTP 及公开 Django User 测试夹具控制活跃性，配置通过 override_settings；推荐随机不要求每次必然不同。并发唯一性需实现提供数据库约束/事务说明并测试有效申请幂等边界。测试环境遵守 docs/agents/environment.md；保留已有无关未提交文件。先提交测试再生产，禁止推送（可能触发部署）。
+
+## RED 交接
+
+- 测试 Agent：share_tests；报告 `docs/test-reports/SHARE-001-red.md`；测试先行提交 `eb99d7e`。
+- 41 个公开契约用例覆盖的 RED：首批39失败/0errors，加测及稳定复现4失败/0errors；旧投递隔离基线7通过。新端点404与缺失配置校验导致失败。
+- 接收方 share_implementation 仅实现生产范围，测试只读；本阶段完成条件为完整实现说明及 READY_FOR_TEST，再交原测试Agent独立复测。
