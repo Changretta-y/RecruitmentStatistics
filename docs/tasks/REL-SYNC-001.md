@@ -1,6 +1,6 @@
 # REL-SYNC-001 上线前同步 GitHub
 
-- 状态：ACCEPTING
+- 状态：DONE
 - 项目管理角色：主 Agent；测试角色：release_tests；实现角色：release_implementation。每个 Agent 只承担此单一角色。
 - 用户价值：每个上线版本的源码提交同时保存在 GitHub，避免只推服务器造成仓库落后。
 - 范围：统一 PowerShell 发布入口、使用说明、独立本地 Git 黑盒测试；验收后由 PM 使用入口同步本次提交并触发既有 Jenkins。
@@ -24,14 +24,14 @@
 
 ## 验收标准
 
-- [ ] 隔离本地 Git 仓库：发布将 GitHub 与部署 release 都更新为捕获的同一提交；GitHub receive 先于部署 receive。
-- [ ] origin 即使有指向第三仓库/部署的多个 pushurl，入口也只按两个 fetch URL 的明确顺序推送，不更新第三仓库。
-- [ ] GitHub 拒绝/non-fast-forward 或核对失败时，入口非零退出，部署 release 原值不变。
-- [ ] 部署拒绝时清晰报告部分完成；移除拒绝因素重跑，两端一致，不强推。
-- [ ] 非 release/游离 HEAD、缺失/歧义/相同目的配置在 push 前失败；DryRun 不改变远端。
-- [ ] 未提交文件保留且不进入推送提交，其他远端分支不变。
-- [ ] 测试先行提交、RED、实现说明、TEST_PASSED、验收记录齐全。
-- [ ] 本次已验收提交实际同步到 GitHub release 和部署 release；既有 Jenkins 精确 revision SUCCESS 与线上 health 正常。
+- [x] 隔离本地 Git 仓库：发布将 GitHub 与部署 release 都更新为捕获的同一提交；GitHub receive 先于部署 receive。
+- [x] origin 即使有指向第三仓库/部署的多个 pushurl，入口也只按两个 fetch URL 的明确顺序推送，不更新第三仓库。
+- [x] GitHub 拒绝/non-fast-forward 或核对失败时，入口非零退出，部署 release 原值不变。
+- [x] 部署拒绝时清晰报告部分完成；移除拒绝因素重跑，两端一致，不强推。
+- [x] 非 release/游离 HEAD、缺失/歧义/相同目的配置在 push 前失败；DryRun 不改变远端。
+- [x] 未提交文件保留且不进入推送提交，其他远端分支不变。
+- [x] 测试先行提交、RED、实现说明、TEST_PASSED、验收记录齐全。
+- [x] 本次已验收提交实际同步到 GitHub release 和部署 release；既有 Jenkins 精确 revision SUCCESS 与线上 health 正常。
 
 ## 风险与测试边界
 
@@ -63,3 +63,9 @@
 
 - 原测试 Agent 独立 19/19 通过（退出 0），报告 docs/test-reports/REL-SYNC-001-passed.md，提交 b51e4ec；测试和断言未改。
 - PM 已收到 TEST_PASSED 后验收公开 README、DryRun 和全部行为证据。当前进入真实双端同步、Jenkins 精确 revision 和独立线上只读核对阶段。
+
+### 完成
+
+- 发布入口退出 0，两端 release=884b295501b6338ae51ec528dc39c5f11b841446；Jenkins #16 SUCCESS/completed=true、revision 精确相同。
+- 原测试角色独立线上报告 docs/test-reports/REL-SYNC-001-live-passed.md（e23fe84）：5组通过，首页/health 200、三容器健康、root-only新备份非空。
+- PM 收齐独立 TEST_PASSED 后验收 docs/acceptance/REL-SYNC-001.md，全部标准通过，标记 DONE。收尾文档继续通过同一入口同步，代码不变；最终 revision 构建结果在本会话只读核对，不再用证据提交递归触发发布。
