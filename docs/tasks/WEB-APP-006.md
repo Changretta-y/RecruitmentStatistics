@@ -1,6 +1,6 @@
 # WEB-APP-006 公司多岗位流程表单与列表展开
 
-- 状态：`TEST_WRITING`
+- 状态：`IMPLEMENTING`
 - 角色：项目管理=主 Agent；独立测试=release_tests（本任务仅测试角色）；独立实现=company_implementation。
 - 用户价值：新增或编辑公司记录时能维护多个投递岗位和流程；主页能展开公司查看每个岗位的完整流程。
 - 范围：新增/编辑表单的岗位增删改、公司级 AI 面/测评/笔试、岗位级多面试编辑；公司列表分组展开及流程展示。
@@ -44,7 +44,7 @@
 ## Agent 交接
 
 - 任务编号：`WEB-APP-006`
-- 当前状态：`TEST_WRITING`（APP-009 已验收 DONE）
+- 当前状态：`IMPLEMENTING`（APP-009 已验收 DONE；核心 UI RED 已确认）
 - 发送角色：项目管理 Agent
 - 接收角色：测试 Agent（仅在后端 APP-009 契约冻结后）
 - 已完成内容与产物：本任务单及 `docs/requirements/APP-009.md`。
@@ -59,3 +59,11 @@
 - 公开API已冻结需求末节补充；新表单使用nested，岗位包含独立application_url、notes、状态、投递时间与面试。旧UI固定payload测试按新公开契约适配，保留用户交互价值断言。
 - 本机真实集成环境：API127.0.0.1:8019、独立app009_acceptance数据库（与pytest库不同）；前端可用VITE_API_PROXY_TARGET=http://127.0.0.1:8019、VITE_DEV_PORT=5189、VITE_API_BASE_URL空串。只用合成用户，不访问生产账号。
 - 完成条件：公开UI交互与请求测试、有效RED报告、测试先行提交；随后实现，原测试独立专项/受影响回归/真实HTTP+Edge集成及桌面窄屏截图QA。记录既存REL-001 auth-store失败及覆盖率基线，不以删断言宣称全项目全绿。
+
+## 2026-09-29 核心 RED 与实现交接
+
+- 测试先行提交：4cf24bc；报告：`docs/test-reports/WEB-APP-006-red.md`。
+- 有效 RED：真实 Edge 登录、公司列表及新增页基线通过；缺失添加岗位按钮、唯一测评时间入口和多岗位展开按钮导致 3 项行为失败，1 项基线通过，无环境错误。
+- 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 接收实现角色：company_implementation；可写 `frontend/src/` 与 `docs/implementation-notes/WEB-APP-006.md`，测试目录只读。
+- 完成条件：实现冻结公开契约、运行必要自测并单独提交，交 READY_FOR_TEST；原测试角色补齐 nested CRUD、部分删除失败恢复、字段错误、真实 API 持久集成和桌面/375px截图后独立复测。
