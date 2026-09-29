@@ -21,6 +21,10 @@ AVATARS = {f"avatar-{index:02d}" for index in range(1, 9)}
 PUBLIC_FIELDS = {"id", "username", "avatar", "relationship"}
 PAGE_FIELDS = {"count", "page", "page_size", "total_pages", "next", "previous", "results"}
 STAGES = ("ai_interview", "written_test", "first_interview", "second_interview", "third_interview", "hr_interview")
+SHARED_APPLICATION_FIELDS = {
+    "id", "company_name", "position_name", "application_status",
+    "application_time", "application_url", "current_stage", "created_at", "updated_at",
+} | {f"{stage}_{suffix}" for stage in STAGES for suffix in ("time", "duration_minutes")}
 pytestmark = pytest.mark.django_db
 
 
@@ -256,8 +260,8 @@ def test_acceptance_grants_bidirectional_read_only_safe_records_without_legacy_a
         assert PAGE_FIELDS <= set(body)
         assert body["count"] == 1
         shared = body["results"][0]
-        assert set(shared) == set(expected) - {"notes", "user"}
-        assert shared == {key: value for key, value in expected.items() if key not in {"notes", "user"}}
+        assert set(shared) == SHARED_APPLICATION_FIELDS
+        assert shared == {key: expected[key] for key in SHARED_APPLICATION_FIELDS}
         assert "PRIVATE_NOTE_9381" not in str(body)
         for method in ("get", "patch", "delete"):
             error(call(viewer, method, f"{APPS}{expected['id']}/", {"notes": "attack"}), 404, "NOT_FOUND")
@@ -272,6 +276,37 @@ def test_acceptance_grants_bidirectional_read_only_safe_records_without_legacy_a
     assert success(call(third, "get", BASE + "connections/")) == {"results": []}
     error(call(third, "delete", f"{BASE}connections/{item['id']}/"), 404, "NOT_FOUND")
     assert success(call(second, "get", f"{APPS}{other['id']}/")) == other
+
+
+def test_nested_company_fields_and_position_notes_are_not_implicitly_shared(people):
+    viewer, owner, third = people
+    company = success(call(owner, "post", APPS, {
+        "company_name": "多岗位共享隐私公司",
+        "shared_stages": [{"type": "assessment", "scheduled_at": None}],
+        "positions": [
+            {"position_name": "公开首岗位", "notes": "PRIVATE_NESTED_FIRST_5834", "interviews": []},
+            {"position_name": "第二岗位独有名称", "notes": "PRIVATE_NESTED_SECOND_7259", "interviews": []},
+        ],
+    }), 201)
+    assert len(company["positions"]) == 2
+    assert [position["notes"] for position in company["positions"]] == [
+        "PRIVATE_NESTED_FIRST_5834", "PRIVATE_NESTED_SECOND_7259",
+    ]
+    error(records(viewer, owner), 404, "NOT_FOUND")
+    item = connect(viewer, owner)
+    page = success(records(viewer, owner))
+    assert page["count"] == 1
+    shared = page["results"][0]
+    assert set(shared) == SHARED_APPLICATION_FIELDS
+    assert shared == {key: company[key] for key in SHARED_APPLICATION_FIELDS}
+    assert not {"positions", "shared_stages", "notes", "user"}.intersection(shared)
+    assert "PRIVATE_NESTED_FIRST_5834" not in str(page)
+    assert "PRIVATE_NESTED_SECOND_7259" not in str(page)
+    assert "第二岗位独有名称" not in str(page)
+    error(records(third, owner), 404, "NOT_FOUND")
+    assert call(owner, "delete", f"{BASE}connections/{item['id']}/").status_code == 204
+    error(records(viewer, owner), 404, "NOT_FOUND")
+    assert success(call(owner, "get", f"{APPS}{company['id']}/")) == company
 
 
 @pytest.mark.parametrize("revoker_index", [0, 1])
