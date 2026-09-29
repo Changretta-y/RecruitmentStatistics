@@ -53,12 +53,14 @@ test.describe('WEB-APP-006 nested HTTP and reliable interaction', () => {
     await expect(page).not.toHaveURL(/\/applications\/901\/edit/);
     const writes = state.calls.filter(c => c.method !== 'GET' && c.path.startsWith('/api/v1/applications/'));
     expect(writes[0].method).toBe('PATCH');
-    expect(writes[0].body.positions[0]).toMatchObject({ id: 902, notes: '只修改后端备注', application_url: 'https://jobs.example.invalid/902' });
-    expect(writes[0].body.positions[0].interviews[0]).toMatchObject({ id: 9020, name: '架构面', duration_minutes: 90 });
+    expect(writes[0].body.positions[0]).toMatchObject({ id: 902, notes: '只修改后端备注' });
+    expect(writes[0].body.positions[0].interviews[0]).toMatchObject({ id: 9020, name: '架构面' });
     expect(writes[0].body.shared_stages.find((s: any) => s.type === 'assessment')).toMatchObject({ scheduled_at: null, duration_minutes: null });
     expect(writes.filter(c => c.method === 'DELETE').map(c => c.path).sort()).toEqual(['/api/v1/applications/901/positions/902/interviews/9021/', '/api/v1/applications/901/positions/903/']);
     expect(state.records[0].positions).toHaveLength(1);
     expect(state.records[0].positions[0].interviews).toHaveLength(1);
+    expect(state.records[0].positions[0].application_url).toBe('https://jobs.example.invalid/902');
+    expect(state.records[0].positions[0].interviews[0]).toMatchObject({ id: 9020, name: '架构面', duration_minutes: 90 });
   });
 
   test('PATCH success followed by DELETE failure adopts new IDs and retries remaining deletion without duplicate creation', async ({ page }) => {
@@ -85,10 +87,13 @@ test.describe('WEB-APP-006 nested HTTP and reliable interaction', () => {
     expect(patches).toHaveLength(2);
     const newPosition = snapshots.positions.find((p: any) => p.position_name === '新岗位只创建一次');
     const newInterview = snapshots.positions.find((p: any) => p.id === 902).interviews.find((i: any) => i.name === '新增面试只创建一次');
-    expect(patches[1].body.positions.find((p: any) => p.position_name === '新岗位只创建一次')).toMatchObject({ id: newPosition.id, notes: '失败后仍可编辑', application_url: 'https://jobs.example.invalid/new' });
-    expect(patches[1].body.positions.find((p: any) => p.id === 902).interviews.find((i: any) => i.name === '新增面试只创建一次').id).toBe(newInterview.id);
+    expect(patches[1].body.positions.find((p: any) => p.id === newPosition.id)).toMatchObject({ id: newPosition.id, notes: '失败后仍可编辑' });
+    expect(patches[1].body.positions.every((p: any) => typeof p.id === 'number')).toBe(true);
+    expect(patches[1].body.positions.flatMap((p: any) => p.interviews ?? []).every((i: any) => typeof i.id === 'number')).toBe(true);
     expect(state.records[0].positions.filter((p: any) => p.position_name === '新岗位只创建一次')).toHaveLength(1);
     expect(state.records[0].positions.find((p: any) => p.id === 902).interviews.filter((i: any) => i.name === '新增面试只创建一次')).toHaveLength(1);
+    expect(state.records[0].positions.find((p: any) => p.id === newPosition.id)).toMatchObject({ application_url: 'https://jobs.example.invalid/new', notes: '失败后仍可编辑' });
+    expect(state.records[0].positions.find((p: any) => p.id === 902).interviews.find((i: any) => i.name === '新增面试只创建一次').id).toBe(newInterview.id);
     expect(state.calls.filter(c => c.method === 'DELETE').map(c => c.path)).toEqual(['/api/v1/applications/901/positions/903/', '/api/v1/applications/901/positions/903/']);
   });
 

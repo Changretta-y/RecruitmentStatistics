@@ -98,7 +98,7 @@ test.describe('WEB-APP-006 core public UI contract', () => {
     await page.keyboard.press('Enter');
     await expect(expand).toHaveAttribute('aria-expanded', 'true');
     await expect(page.getByText('前端工程师', { exact: true })).toBeVisible();
-    await expect(page.getByText('测评', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('测评', { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await expand.focus();
     await page.keyboard.press('Space');
     await expect(expand).toHaveAttribute('aria-expanded', 'false');

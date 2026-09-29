@@ -62,7 +62,7 @@ test('WEB-APP-006 real isolated API persists multi-position flows and desktop/37
   await expect(page.getByText('真实后端研发', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('前端专属面试', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('测评', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('测评', { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.screenshot({ path: screenshot('desktop-expanded'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
