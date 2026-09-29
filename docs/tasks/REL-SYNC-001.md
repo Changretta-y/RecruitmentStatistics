@@ -1,6 +1,6 @@
 # REL-SYNC-001 上线前同步 GitHub
 
-- 状态：TEST_WRITING
+- 状态：ACCEPTING
 - 项目管理角色：主 Agent；测试角色：release_tests；实现角色：release_implementation。每个 Agent 只承担此单一角色。
 - 用户价值：每个上线版本的源码提交同时保存在 GitHub，避免只推服务器造成仓库落后。
 - 范围：统一 PowerShell 发布入口、使用说明、独立本地 Git 黑盒测试；验收后由 PM 使用入口同步本次提交并触发既有 Jenkins。
@@ -45,3 +45,21 @@
 - 接收角色：release_tests
 - 输入：本任务、系统设计第 15–16 节、environment.md、test-agent.md、workflow.md、templates.md。
 - 本阶段完成条件：独立黑盒测试与稳定 RED（入口缺失属于缺失行为，环境和夹具已验证），仅提交测试和 RED 报告，再交给 PM。
+
+### RED → 实现交接
+
+- 测试先行提交：75027d3；RED 报告：docs/test-reports/REL-SYNC-001-red.md。
+- 夹具 1/0 通过；入口缺失两次稳定失败（1 passed / 1 failed，退出 1），属于公开行为缺失。
+- 接收角色：release_implementation；允许范围与本任务一致，测试目录只读。
+- 完成条件：入口和 README 实现、独立实现提交与 READY_FOR_TEST 说明，交回原测试角色执行完整 19 项黑盒检查。
+
+### 实现 → 独立复测交接
+
+- 实现提交：9d63472；说明：docs/implementation-notes/REL-SYNC-001.md。
+- 实现自检 19/0（不替代独立复测）；Windows PowerShell 5.1 预演和原生 Git 非零处理亦已自检。
+- 接收角色：原 release_tests；运行相同先行黑盒测试，保留全部断言与失败阻断检查，产出独立 TEST_PASSED 或 TEST_FAILED。
+
+### TEST_PASSED → 验收与发布
+
+- 原测试 Agent 独立 19/19 通过（退出 0），报告 docs/test-reports/REL-SYNC-001-passed.md，提交 b51e4ec；测试和断言未改。
+- PM 已收到 TEST_PASSED 后验收公开 README、DryRun 和全部行为证据。当前进入真实双端同步、Jenkins 精确 revision 和独立线上只读核对阶段。
