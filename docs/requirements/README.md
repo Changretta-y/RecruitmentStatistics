@@ -77,3 +77,5 @@ WEB-APP-001 → WEB-APP-002 → WEB-APP-003 → WEB-APP-004
 | 21 | `DOC-001` | OpenAPI、运行和部署文档 | PLANNED |
 | 22 | `E2E-001` | 核心端到端流程 | PLANNED |
 | 23 | `REL-001` | 全量质量门禁与发布演练 | PLANNED |
+
+- [`APP-009`](APP-009.md)：公司下多岗位投递、公司级 AI 面/测评/笔试共享流程与岗位级多面试；后端任务 `APP-009` 后再启动前端 `WEB-APP-006`。
