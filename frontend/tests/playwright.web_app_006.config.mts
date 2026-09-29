@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   testDir: '.',
-  testMatch: 'test_web_app_006.e2e.spec.ts',
+  testMatch: 'test_web_app_006*.e2e.spec.ts',
   timeout: 30_000,
   expect: { timeout: 4_000 },
   workers: 1,

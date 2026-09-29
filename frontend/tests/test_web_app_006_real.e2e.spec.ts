@@ -1,0 +1,98 @@
+import { expect, test } from '@playwright/test';
+import { resolve } from 'node:path';
+import { positionGroup, interviewGroup, saveButton } from './web_app_006_http_fixture';
+
+const API = 'http://127.0.0.1:8019/api/v1';
+const screenshot = (name: string) => resolve(process.cwd(), '../docs/test-reports', `WEB-APP-006-qa-${name}.png`);
+
+test('WEB-APP-006 real isolated API persists multi-position flows and desktop/375px UI remains readable', async ({ page, request }) => {
+  const username = `web006_${Date.now()}_${Math.random().toString(16).slice(2, 7)}`;
+  const password = 'Web006_Synthetic_Strong_123';
+  const registration = await request.post(`${API}/auth/register/`, {
+    data: { username, password, password_confirm: password, email: `${username}@example.invalid` },
+  });
+  expect(registration.status(), 'isolated synthetic registration fixture').toBe(201);
+  await page.goto('/login');
+  await page.locator('input[name="username"]').fill(username);
+  await page.locator('input[name="password"]').fill(password);
+  const loginResponse = page.waitForResponse(r => r.url().endsWith('/api/v1/auth/login/') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: /登录|login/i }).click();
+  const login = await loginResponse;
+  expect(login.status()).toBe(200);
+  const access = (await login.json()).access;
+  await expect(page).toHaveURL(/\/applications(?:[/?#]|$)/);
+  await page.locator('a[href="/applications/new"]').last().click();
+  const company = `真实持久多岗_${Date.now()}`;
+  await page.getByLabel('公司名称', { exact: true }).fill(company);
+  await positionGroup(page, 1).getByLabel('岗位名称', { exact: true }).fill('真实后端研发');
+  await positionGroup(page, 1).getByLabel('投递链接', { exact: true }).fill('https://jobs.example.invalid/real-backend');
+  await positionGroup(page, 1).getByLabel('备注', { exact: true }).fill('只属于后端的合成备注');
+  await page.getByRole('button', { name: '添加岗位', exact: true }).click();
+  await positionGroup(page, 2).getByLabel('岗位名称', { exact: true }).fill('真实前端研发');
+  await positionGroup(page, 2).getByLabel('投递链接', { exact: true }).fill('https://jobs.example.invalid/real-frontend');
+  await positionGroup(page, 2).getByLabel('备注', { exact: true }).fill('只属于前端的合成备注');
+  await page.getByLabel('AI 面时间', { exact: true }).fill('2026-10-05T09:00');
+  await page.getByLabel('测评时间', { exact: true }).fill('2026-10-06T10:00');
+  await page.getByLabel('笔试时间', { exact: true }).fill('2026-10-07T11:00');
+  for (let number = 1; number <= 2; number++) {
+    await positionGroup(page, 1).getByRole('button', { name: '添加面试', exact: true }).click();
+    await interviewGroup(page, 1, number).getByLabel('面试名称', { exact: true }).fill('重复技术面');
+    await interviewGroup(page, 1, number).getByLabel('面试时间', { exact: true }).fill(`2026-10-${number + 10}T10:00`);
+  }
+  await positionGroup(page, 2).getByRole('button', { name: '添加面试', exact: true }).click();
+  await interviewGroup(page, 2, 1).getByLabel('面试名称', { exact: true }).fill('前端专属面试');
+  await interviewGroup(page, 2, 1).getByLabel('面试时间', { exact: true }).fill('2026-10-14T10:00');
+  const createdResponse = page.waitForResponse(r => r.url().endsWith('/api/v1/applications/') && r.request().method() === 'POST');
+  await saveButton(page).click();
+  const response = await createdResponse;
+  expect(response.status()).toBe(201);
+  const created = await response.json();
+  expect(created.positions).toHaveLength(2);
+  expect(created.positions[0].interviews.map((i: any) => i.name)).toEqual(['重复技术面', '重复技术面']);
+  expect(new Set(created.shared_stages.map((s: any) => s.type)).size).toBe(3);
+  const read = await request.get(`${API}/applications/${created.id}/`, { headers: { Authorization: `Bearer ${access}` } });
+  expect(read.status()).toBe(200);
+  const persisted = await read.json();
+  expect(persisted.positions).toEqual(created.positions);
+  expect(persisted.shared_stages).toEqual(created.shared_stages);
+  await page.reload();
+  const row = page.getByRole('row').filter({ hasText: company });
+  await expect(row).toHaveCount(1);
+  await row.locator('button[aria-expanded]').click();
+  await expect(page.getByText('真实后端研发', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('前端专属面试', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('测评', { exact: true }).first()).toBeVisible();
+  await page.screenshot({ path: screenshot('desktop-expanded'), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '375px expanded page has no document horizontal overflow').toBe(true);
+  await page.screenshot({ path: screenshot('mobile-expanded'), fullPage: true });
+  await row.getByRole('button', { name: /编辑/ }).click();
+  await expect(positionGroup(page, 1).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-backend');
+  await expect(positionGroup(page, 2).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-frontend');
+  await expect(interviewGroup(page, 1, 2).getByLabel('面试名称', { exact: true })).toHaveValue('重复技术面');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '375px editor has no document horizontal overflow').toBe(true);
+  await page.screenshot({ path: screenshot('mobile-edit'), fullPage: true });
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({ path: screenshot('desktop-edit'), fullPage: true });
+  // Modify one role and one interview, remove a different interview, clear assessment.
+  await positionGroup(page, 2).getByLabel('备注', { exact: true }).fill('只修改前端合成备注');
+  await interviewGroup(page, 1, 1).getByLabel('面试名称', { exact: true }).fill('更新技术面');
+  await interviewGroup(page, 1, 2).getByRole('button', { name: '删除面试2', exact: true }).click();
+  await page.getByLabel('测评时间', { exact: true }).fill('');
+  await saveButton(page).click();
+  await expect(positionGroup(page, 1)).toBeHidden();
+  await page.reload();
+  const after = await request.get(`${API}/applications/${created.id}/`, { headers: { Authorization: `Bearer ${access}` } });
+  expect(after.status()).toBe(200);
+  const changed = await after.json();
+  expect(changed.positions[0].application_url).toBe(created.positions[0].application_url);
+  expect(changed.positions[1].application_url).toBe(created.positions[1].application_url);
+  expect(changed.positions[0].notes).toBe(created.positions[0].notes);
+  expect(changed.positions[1].notes).toBe('只修改前端合成备注');
+  expect(changed.positions[0].interviews).toHaveLength(1);
+  expect(changed.positions[0].interviews[0]).toMatchObject({ id: created.positions[0].interviews[0].id, name: '更新技术面' });
+  expect(changed.positions[1].interviews).toEqual(created.positions[1].interviews);
+  expect(changed.shared_stages.find((s: any) => s.type === 'assessment')).toMatchObject({ scheduled_at: null, duration_minutes: null });
+});
