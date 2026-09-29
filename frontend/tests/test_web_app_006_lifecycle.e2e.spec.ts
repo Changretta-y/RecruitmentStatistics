@@ -134,7 +134,8 @@ test.describe('WEB-APP-006 nested HTTP and reliable interaction', () => {
     const state = await companyHttpFixture(page);
     state.records[0].positions = [state.records[0].positions[0]];
     await page.reload();
-    await page.getByRole('row').filter({ hasText: '多岗位示例科技' }).getByRole('button', { name: /编辑/ }).click();
+    const row = page.getByRole('row').filter({ hasText: '多岗位示例科技' });
+    await row.getByRole('link', { name: /编辑/ }).or(row.getByRole('button', { name: /编辑/ })).click();
     await expect(positionGroup(page, 1).getByRole('button', { name: '移除岗位1', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: '添加岗位', exact: true }).click();
     await positionGroup(page, 2).getByLabel('岗位名称', { exact: true }).fill('替代岗位');

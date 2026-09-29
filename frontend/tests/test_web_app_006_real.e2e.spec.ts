@@ -68,7 +68,7 @@ test('WEB-APP-006 real isolated API persists multi-position flows and desktop/37
   await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '375px expanded page has no document horizontal overflow').toBe(true);
   await page.screenshot({ path: screenshot('mobile-expanded'), fullPage: true });
-  await row.getByRole('button', { name: /编辑/ }).click();
+  await row.getByRole('link', { name: /编辑/ }).or(row.getByRole('button', { name: /编辑/ })).click();
   await expect(positionGroup(page, 1).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-backend');
   await expect(positionGroup(page, 2).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-frontend');
   await expect(interviewGroup(page, 1, 2).getByLabel('面试名称', { exact: true })).toHaveValue('重复技术面');

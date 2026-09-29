@@ -100,7 +100,7 @@ export async function companyHttpFixture(page: Page) {
 }
 export async function editCompany(page: Page) {
   const row = page.getByRole('row').filter({ hasText: '多岗位示例科技' });
-  await row.getByRole('button', { name: /编辑/ }).click();
+  await row.getByRole('link', { name: /编辑/ }).or(row.getByRole('button', { name: /编辑/ })).click();
   await expect(positionGroup(page, 1)).toBeVisible();
   await expect(positionGroup(page, 2)).toBeVisible();
 }
