@@ -82,6 +82,19 @@ npm run e2e
 
 若项目当前未配置 E2E runner，请由对应测试任务提供 runner 和浏览器依赖；本说明不替代 E2E 测试实现。
 
+## 新版本上线
+
+新版本上线统一在当前仓库的 `release` 分支执行：
+
+```powershell
+pwsh -NoProfile -File scripts/publish-release.ps1 -DryRun
+pwsh -NoProfile -File scripts/publish-release.ps1
+```
+
+入口捕获已提交 HEAD 的 SHA，先按 `origin` 的唯一 fetch URL 同步 GitHub 并核对 `release`，再按 `deploy` 的唯一 fetch URL 推送同一 SHA，最后核对两端一致。它使用普通非强制推送，保留未提交文件与 Git remote 配置；即使 `origin` 配有多个 pushurl，也按上述顺序发布。可通过 `-GitHubRemote`、`-DeployRemote` 指定其他已配置远端。上线操作都使用此入口，避免直接推送 `deploy`。
+
+GitHub 推送或核对失败时部署不会开始。GitHub 已同步而部署失败时，解决权限、网络或历史冲突后重跑入口；若远端拒绝非快进更新，先整合历史并复测。入口完成后，等待既有 Jenkins 构建 `SUCCESS`，确认 revision 等于输出 SHA，再由独立测试角色核对线上健康。完整执行与恢复条件见[上线工作流](docs/requirements/release-workflow.md)。
+
 ## Docker Compose 部署
 
 项目提供了 PostgreSQL、Django 后端和 Nginx/Vuetify 前端的 Compose 编排。首次启动：
