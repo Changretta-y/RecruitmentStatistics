@@ -1,17 +1,21 @@
 from django.http import Http404
-from django.db.models import F, Q
+from django.db import transaction
+from django.db.models import F, Min, Q
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework import serializers
+from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 
 from backend.config.schema import ErrorResponse
-from .models import JobApplication
+from .models import ApplicationPosition, INTERVIEW_NAMES, JobApplication, PositionInterview
+from .flows import sync_projection
 from .pagination import JobApplicationPagination
-from .serializers import JobApplicationSerializer
+from .serializers import InterviewSerializer, JobApplicationSerializer
 
 
 application_query_parameters = [
@@ -48,6 +52,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
     serializer_class = JobApplicationSerializer
     pagination_class = JobApplicationPagination
     stage_fields = {
+        "assessment": "assessment_time",
         "ai_interview": "ai_interview_time",
         "written_test": "written_test_time",
         "first_interview": "first_interview_time",
@@ -72,7 +77,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
         return self.list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = JobApplication.objects.filter(user=self.request.user)
+        queryset = JobApplication.objects.filter(user=self.request.user).annotate(assessment_time=Min("shared_stages__scheduled_at", filter=Q(shared_stages__type="assessment"))).prefetch_related("positions__interviews", "shared_stages")
         params = self.request.query_params
 
         search = params.get("search")
@@ -80,6 +85,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
             queryset = queryset.filter(
                 Q(company_name__icontains=search)
                 | Q(position_name__icontains=search)
+                | Q(positions__position_name__icontains=search)
             )
 
         raw_application_statuses = params.getlist("application_status")
@@ -100,7 +106,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
                     "application_status",
                     "application_status must contain one or more supported statuses.",
                 )
-            queryset = queryset.filter(application_status__in=application_statuses)
+            queryset = queryset.filter(Q(application_status__in=application_statuses) | Q(positions__application_status__in=application_statuses))
 
         stage = params.get("stage")
         if stage is not None:
@@ -110,23 +116,29 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
                     "stage",
                     "stage is not a supported interview stage.",
                 )
-            queryset = queryset.filter(**{f"{stage_field}__isnull": False})
+            if stage in ("ai_interview", "assessment", "written_test"):
+                condition = Q(shared_stages__type=stage, shared_stages__scheduled_at__isnull=False)
+            else:
+                condition = Q(positions__interviews__name=INTERVIEW_NAMES[stage], positions__interviews__scheduled_at__isnull=False)
+            if stage != "assessment":
+                condition |= Q(**{f"{stage_field}__isnull": False})
+            queryset = queryset.filter(condition)
 
         application_time_after = self._parse_datetime(
             "application_time_after",
             params.get("application_time_after"),
         )
         if application_time_after is not None:
-            queryset = queryset.filter(application_time__gte=application_time_after)
+            queryset = queryset.filter(Q(application_time__gte=application_time_after) | Q(positions__application_time__gte=application_time_after))
 
         application_time_before = self._parse_datetime(
             "application_time_before",
             params.get("application_time_before"),
         )
         if application_time_before is not None:
-            queryset = queryset.filter(application_time__lte=application_time_before)
+            queryset = queryset.filter(Q(application_time__lte=application_time_before) | Q(positions__application_time__lte=application_time_before))
 
-        return queryset.order_by(*self._ordering(params.get("ordering")))
+        return queryset.distinct().order_by(*self._ordering(params.get("ordering")))
 
     @staticmethod
     def _validation_error(field, message):
@@ -207,7 +219,7 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = JobApplicationSerializer
 
     def get_queryset(self):
-        return JobApplication.objects.filter(user=self.request.user)
+        return JobApplication.objects.filter(user=self.request.user).prefetch_related("positions__interviews", "shared_stages")
 
     @extend_schema(
         responses={200: JobApplicationSerializer, 401: OpenApiResponse(ErrorResponse), 404: OpenApiResponse(ErrorResponse)},
@@ -288,3 +300,57 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         self.perform_destroy(instance)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PositionDeleteView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    @transaction.atomic
+    def delete(self, request, company_id, position_id):
+        company = get_object_or_404(JobApplication.objects.select_for_update(), pk=company_id, user=request.user)
+        position = get_object_or_404(ApplicationPosition, pk=position_id, company=company)
+        if company.positions.count() <= 1:
+            return Response({"code": "VALIDATION_ERROR", "details": {"positions": ["公司至少保留一个岗位。"]}}, status=400)
+        position.delete()
+        sync_projection(company)
+        return Response(status=204)
+
+
+class InterviewResourceView(APIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    @transaction.atomic
+    def mutate(self, request, company_id, position_id, interview_id=None):
+        company = get_object_or_404(JobApplication.objects.select_for_update(), pk=company_id, user=request.user)
+        position = get_object_or_404(ApplicationPosition, pk=position_id, company=company)
+        interview = get_object_or_404(PositionInterview, pk=interview_id, position=position) if interview_id is not None else None
+        if request.method == "DELETE":
+            interview.delete()
+            sync_projection(company)
+            return Response(status=204)
+        serializer = InterviewSerializer(interview, data=request.data, partial=request.method == "PATCH")
+        if not serializer.is_valid():
+            return Response({"code": "VALIDATION_ERROR", "details": serializer.errors}, status=400)
+        serializer.save(position=position)
+        company.flow_version = 2
+        sync_projection(company)
+        return Response(serializer.data, status=201 if request.method == "POST" else 200)
+
+    def post(self, request, company_id, position_id):
+        return self.mutate(request, company_id, position_id)
+
+    def patch(self, request, company_id, position_id, interview_id):
+        return self.mutate(request, company_id, position_id, interview_id)
+
+    def delete(self, request, company_id, position_id, interview_id):
+        return self.mutate(request, company_id, position_id, interview_id)
+
+
+class InterviewCreateView(InterviewResourceView):
+    http_method_names = ["post", "options"]
+
+
+class InterviewDetailView(InterviewResourceView):
+    http_method_names = ["patch", "delete", "options"]
