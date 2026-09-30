@@ -6,6 +6,8 @@ const API = 'http://127.0.0.1:8019/api/v1';
 const screenshot = (name: string) => resolve(process.cwd(), '../docs/test-reports', `WEB-APP-006-qa-${name}.png`);
 
 test('WEB-APP-006 real isolated API persists multi-position flows and desktop/375px UI remains readable', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  page.setDefaultTimeout(5_000);
   const username = `web006_${Date.now()}_${Math.random().toString(16).slice(2, 7)}`;
   const password = 'Web006_Synthetic_Strong_123';
   const registration = await request.post(`${API}/auth/register/`, {
@@ -65,14 +67,26 @@ test('WEB-APP-006 real isolated API persists multi-position flows and desktop/37
   await expect(page.getByText('测评', { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.screenshot({ path: screenshot('desktop-expanded'), fullPage: true });
   await page.setViewportSize({ width: 375, height: 812 });
+  await page.reload();
+  await expect(page.getByRole('button', { name: '打开导航', exact: true })).toBeVisible();
+  await expect(row).toHaveCount(1);
+  await row.locator('button[aria-expanded]').click();
   await expect(page.getByText('真实前端研发', { exact: true }).first()).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '375px expanded page has no document horizontal overflow').toBe(true);
+  await expect(page.getByText('测评', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  const mobileMain = await page.getByRole('main').boundingBox();
+  expect(mobileMain?.width, '375px main content is readable in the responsive baseline').toBeGreaterThan(300);
+  const mobileWidth = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth, body: document.body.scrollWidth }));
+  expect(mobileWidth.viewport, '375px browser viewport is exact').toBe(375);
+  await test.info().attach('375px navigation closed width', { body: JSON.stringify(mobileWidth), contentType: 'application/json' });
+  expect(Math.max(mobileWidth.document, mobileWidth.body) <= mobileWidth.viewport + 1, '375px expanded page has no document horizontal overflow').toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.screenshot({ path: screenshot('mobile-expanded'), fullPage: true });
   await row.getByRole('link', { name: /编辑/ }).or(row.getByRole('button', { name: /编辑/ })).click();
   await expect(positionGroup(page, 1).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-backend');
   await expect(positionGroup(page, 2).getByLabel('投递链接', { exact: true })).toHaveValue('https://jobs.example.invalid/real-frontend');
   await expect(interviewGroup(page, 1, 2).getByLabel('面试名称', { exact: true })).toHaveValue('重复技术面');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), '375px editor has no document horizontal overflow').toBe(true);
+  expect(await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) <= innerWidth + 1), '375px editor has no document horizontal overflow').toBe(true);
   await page.screenshot({ path: screenshot('mobile-edit'), fullPage: true });
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({ path: screenshot('desktop-edit'), fullPage: true });
