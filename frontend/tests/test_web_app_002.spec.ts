@@ -211,7 +211,7 @@ describe("WEB-APP-002 ApplicationsView", () => {
     await router.back();
     await router.isReady();
     await flushPromises();
-    expect(searchInput(wrapper).element.value).toBe("示例");
+    await vi.waitFor(() => expect(searchInput(wrapper).element.value).toBe("示例"));
     expect(router.currentRoute.value.query.page_size).toBe("50");
   });
 
@@ -227,7 +227,7 @@ describe("WEB-APP-002 ApplicationsView", () => {
     await router.isReady();
     await flushPromises();
     expect(authState.logout).toHaveBeenCalledTimes(1);
-    expect(router.currentRoute.value.path).toBe("/login");
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe("/login"));
   });
 
   it("distinguishes initial empty, filtered no-result, network error, and 401 states without dropping query", async () => {

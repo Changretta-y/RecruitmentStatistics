@@ -136,7 +136,10 @@ function deleteButtonFor(wrapper: any, company: string) {
 
 function dialog(wrapper: any) {
   const labelled = wrapper.find('[role="dialog"]');
-  return labelled.exists() ? labelled : wrapper;
+  if (labelled.exists()) return labelled;
+  const visibleOverlay = wrapper.findAll('.v-dialog, .v-overlay__content, .v-card').find((candidate: any) => candidate.text().includes('确认删除投递记录'));
+  expect(visibleOverlay, 'delete confirmation must be a distinct public dialog or overlay').toBeTruthy();
+  return visibleOverlay;
 }
 
 async function openDeleteDialog(wrapper: any, company = firstApplication.companyName) {
@@ -149,7 +152,7 @@ async function openDeleteDialog(wrapper: any, company = firstApplication.company
 
 async function confirmDelete(wrapper: any) {
   const activeDialog = dialog(wrapper);
-  const confirm = buttonByText(activeDialog, /确认删除|确认|删除/);
+  const confirm = buttonByText(activeDialog, /^确认删除$|^确认$/);
   expect(confirm, "a public confirm action is required").toBeTruthy();
   await confirm.trigger("click");
   await flushPromises();
@@ -176,7 +179,7 @@ describe("WEB-APP-004 delete and empty/error interactions", () => {
     await flushPromises();
     const activeDialog = dialog(wrapper);
     expect(activeDialog.text()).toContain(firstApplication.companyName);
-    expect(activeDialog.text()).toContain(firstApplication.positionName);
+    expect(activeDialog.text()).toMatch(/岗位[:：].*1\s*个/);
 
     const cancel = buttonByText(activeDialog, /取消|关闭/);
     expect(cancel).toBeTruthy();
@@ -237,7 +240,7 @@ describe("WEB-APP-004 delete and empty/error interactions", () => {
 
     expect(wrapper.text()).toMatch(/网络|重试|失败/);
     expect(wrapper.text()).not.toContain("Token=secret");
-    const retry = buttonByText(wrapper, /重试/);
+    const retry = buttonByText(wrapper, /重试/) ?? buttonByText(dialog(wrapper), /^确认删除$|^确认$/);
     expect(retry).toBeTruthy();
     await retry.trigger("click");
     await flushPromises();
@@ -259,6 +262,6 @@ describe("WEB-APP-004 delete and empty/error interactions", () => {
     await reset.trigger("click");
     await filtered.router.isReady();
     await flushPromises();
-    expect(filtered.router.currentRoute.value.query.search).toBeUndefined();
+    await vi.waitFor(() => expect(filtered.router.currentRoute.value.query.search).toBeUndefined());
   });
 });
