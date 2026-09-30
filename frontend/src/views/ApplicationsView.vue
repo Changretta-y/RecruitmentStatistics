@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { RouterLink, useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { VAlert } from "vuetify/components/VAlert";
 import { VBtn } from "vuetify/components/VBtn";
 import { VCard } from "vuetify/components/VCard";
@@ -16,7 +16,6 @@ import { VTextField } from "vuetify/components/VTextField";
 
 import { delete as deleteRequest, list } from "../api/applications";
 import DateTimeField from "../components/DateTimeField.vue";
-import PositionFlowCard from "../components/PositionFlowCard.vue";
 import { readPositions, readSharedStages, SHARED_STAGES } from "../utils/company-application";
 import AppShell from "../components/AppShell.vue";
 import { useAuthStore } from "../stores/auth";
@@ -31,6 +30,7 @@ import {
   type ApplicationQueryState,
   type ApplicationStage,
   type ApplicationStatus,
+  type ApplicationPosition,
   type JobApplication,
 } from "../types/application";
 
@@ -234,14 +234,16 @@ function displayStage(value: string | null): string {
   if (!value) return "—";
   return stageOptions.find((option) => option.value === value)?.title ?? displayStatus(value);
 }
-function displayCurrentStage(application: JobApplication): string {
-  return displayStage(application.currentStage ?? application.applicationStatus);
-}
-function statusColor(application: JobApplication): string {
-  const currentStage = application.currentStage ?? application.applicationStatus;
-  if (currentStage === "offer") return "success";
-  if (currentStage === "rejected" || currentStage === "withdrawn") return "error";
+function statusColor(position: ApplicationPosition): string {
+  if (position.applicationStatus === "offer") return "success";
+  if (position.applicationStatus === "rejected" || position.applicationStatus === "withdrawn") return "error";
   return "primary";
+}
+function safeLink(value: string): string | undefined {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
+  } catch { return undefined; }
 }
 function toDateTimeLocal(value: string): string {
   if (!value) return "";
@@ -363,38 +365,52 @@ onMounted(() => { void initializeAndLoad(); });
 
     <VCard v-else class="table-card" elevation="1">
       <VTable class="applications-table" hover>
+        <colgroup><col style="width: 16%"><col style="width: 34%"><col style="width: 11%"><col style="width: 21%"><col style="width: 9%"><col style="width: 9%"></colgroup>
         <thead><tr><th>公司</th><th>岗位</th><th>当前进度</th><th>公司共享流程</th><th>更新时间</th><th>操作</th></tr></thead>
-        <tbody>
-          <template v-for="application in data.results" :key="application.id">
-            <tr class="company-row">
-              <td class="font-weight-medium">{{ application.companyName }}</td>
-              <td>
-                <span v-if="positionsOf(application).length === 1">{{ positionsOf(application)[0].positionName }}</span>
-                <template v-else>
-                  <span>{{ positionsOf(application).length }} 个岗位</span>
-                  <button type="button" class="expand-company" :aria-expanded="expandedCompanies.has(application.id)" :aria-controls="`company-positions-${application.id}`" :aria-label="`${expandedCompanies.has(application.id) ? '折叠' : '展开'} ${application.companyName} 的岗位`" @click="toggleCompany(application.id)">{{ expandedCompanies.has(application.id) ? '折叠' : '展开' }}</button>
-                </template>
+        <tbody v-for="application in data.results" :id="`company-positions-${application.id}`" :key="application.id" class="company-group">
+          <tr class="company-row">
+            <td class="company-cell font-weight-medium">
+              <span>{{ application.companyName }}</span>
+              <span v-if="positionsOf(application).length > 1" class="position-count">{{ positionsOf(application).length }} 个岗位</span>
+              <button v-if="positionsOf(application).length > 1" type="button" class="expand-company" :aria-expanded="expandedCompanies.has(application.id)" :aria-controls="`company-positions-${application.id}`" :aria-label="`${expandedCompanies.has(application.id) ? '折叠' : '展开'} ${application.companyName} 的岗位`" @click="toggleCompany(application.id)">{{ expandedCompanies.has(application.id) ? '折叠' : '展开' }}</button>
+            </td>
+            <td class="position-cell">
+              <template v-if="positionsOf(application)[0]">
+                <span class="position-name">{{ positionsOf(application)[0].positionName }}</span>
+                <span class="position-meta">投递：{{ displayTime(positionsOf(application)[0].applicationTime) }}</span>
+                <a v-if="safeLink(positionsOf(application)[0].applicationUrl)" class="position-link" :href="safeLink(positionsOf(application)[0].applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
+                <span v-if="positionsOf(application)[0].notes" class="position-notes" :title="positionsOf(application)[0].notes">备注：{{ positionsOf(application)[0].notes }}</span>
+                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="positionsOf(application)[0].interviews.length"><span v-for="(interview, index) in positionsOf(application)[0].interviews" :key="interview.id ?? index" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
+              </template>
+            </td>
+            <td class="status-cell"><VChip v-if="positionsOf(application)[0]" size="small" :color="statusColor(positionsOf(application)[0])" variant="tonal">{{ displayStage(application.currentStage ?? positionsOf(application)[0].applicationStatus) }}</VChip></td>
+            <td class="shared-flow-cell">
+              <div v-for="(stage, index) in sharedOf(application)" :key="stage.type" class="shared-stage">
+                <span class="shared-label">{{ SHARED_STAGES[index].title }}</span>
+                <span>{{ displayTime(stage.scheduledAt) }}</span>
+                <span v-if="stage.durationMinutes" class="shared-duration">{{ stage.durationMinutes }} 分钟</span>
+              </div>
+            </td>
+            <td class="updated-cell">{{ displayTime(application.updatedAt) }}</td>
+            <td class="actions-cell">
+              <VBtn variant="text" size="small" :href="`/applications/${application.id}/edit`" :aria-label="`编辑 ${application.companyName} ${application.positionName}`" @click.prevent="openEdit(application)">编辑</VBtn>
+              <VBtn variant="text" size="small" color="error" :aria-label="`删除 ${application.companyName} ${application.positionName}`" @click="openDeleteDialog(application)" @keydown.enter.prevent="openDeleteDialog(application)">删除</VBtn>
+            </td>
+          </tr>
+          <template v-if="expandedCompanies.has(application.id)">
+            <tr v-for="(position, index) in positionsOf(application).slice(1)" :key="position.id ?? index" class="position-row">
+              <td class="company-cell" aria-hidden="true"></td>
+              <td class="position-cell">
+                <span class="position-name">{{ position.positionName }}</span>
+                <span class="position-meta">投递：{{ displayTime(position.applicationTime) }}</span>
+                <a v-if="safeLink(position.applicationUrl)" class="position-link" :href="safeLink(position.applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
+                <span v-if="position.notes" class="position-notes" :title="position.notes">备注：{{ position.notes }}</span>
+                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="position.interviews.length"><span v-for="(interview, interviewIndex) in position.interviews" :key="interview.id ?? interviewIndex" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </td>
-              <td><VChip size="small" :color="statusColor(application)" variant="tonal">{{ displayCurrentStage(application) }}</VChip></td>
-              <td class="shared-flow-cell">
-                <div v-for="(stage, index) in sharedOf(application)" :key="stage.type" class="shared-stage">
-                  <span class="shared-label">{{ SHARED_STAGES[index].title }}</span>
-                  <span>{{ displayTime(stage.scheduledAt) }}</span>
-                  <span v-if="stage.durationMinutes" class="shared-duration">{{ stage.durationMinutes }} 分钟</span>
-                </div>
-              </td>
-              <td>{{ displayTime(application.updatedAt) }}</td>
-              <td class="actions-cell">
-                <VBtn variant="text" size="small" :href="`/applications/${application.id}/edit`" :aria-label="`编辑 ${application.companyName} ${application.positionName}`" @click.prevent="openEdit(application)">编辑</VBtn>
-                <VBtn variant="text" size="small" color="error" :aria-label="`删除 ${application.companyName} ${application.positionName}`" @click="openDeleteDialog(application)" @keydown.enter.prevent="openDeleteDialog(application)">删除</VBtn>
-              </td>
-            </tr>
-            <tr v-if="positionsOf(application).length === 1 || expandedCompanies.has(application.id)" class="position-details-row">
-              <td colspan="6">
-                <section :id="`company-positions-${application.id}`" aria-label="岗位投递记录" class="position-details">
-                  <PositionFlowCard v-for="(position, index) in positionsOf(application)" :key="position.id ?? index" :position="position" />
-                </section>
-              </td>
+              <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStage(position.applicationStatus) }}</VChip></td>
+              <td class="shared-flow-cell" aria-hidden="true"></td>
+              <td class="updated-cell" aria-hidden="true"></td>
+              <td class="actions-cell" aria-hidden="true"></td>
             </tr>
           </template>
         </tbody>
@@ -440,18 +456,32 @@ onMounted(() => { void initializeAndLoad(); });
 .query-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 16px; }
 .query-actions { display: flex; align-items: center; gap: 10px; min-height: 56px; }
 .table-card { overflow: hidden; }
+.applications-table :deep(table) { width: 100%; min-width: 980px; table-layout: fixed; }
 .applications-table :deep(th) { background: #f8faff; font-size: .78rem; white-space: nowrap; }
-.applications-table :deep(td) { white-space: nowrap; }
-.company-link { color: #3157d5; text-decoration: none; }
-.company-link:hover { text-decoration: underline; }
-.actions-cell { min-width: 150px; }
-.expand-company { margin-left: 12px; padding: 6px 10px; color: #3157d5; border-radius: 6px; background: #eef3ff; cursor: pointer; }
+.applications-table :deep(td) { vertical-align: middle; white-space: normal; overflow-wrap: anywhere; }
+.company-group + .company-group > .company-row > td { border-top: 2px solid #e3e9f5; }
+.company-cell { width: 17%; }
+.position-cell { width: 29%; }
+.status-cell { width: 11%; }
+.shared-flow-cell { width: 21%; }
+.updated-cell { width: 10%; }
+.actions-cell { width: 12%; }
+.position-count { display: block; margin-top: 4px; color: #667085; font-size: .75rem; font-weight: 400; }
+.expand-company { display: block; margin-top: 6px; padding: 4px 8px; color: #3157d5; border-radius: 6px; background: #eef3ff; cursor: pointer; }
 .expand-company:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
+.position-name { display: block; color: #24375c; font-weight: 700; }
+.position-meta, .position-link { display: inline-block; margin: 3px 10px 0 0; color: #667085; font-size: .75rem; }
+.position-link { color: #3157d5; }
+.position-notes { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #667085; font-size: .75rem; }
+.interview-flow { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; color: #475467; font-size: .75rem; }
+.flow-label { flex-shrink: 0; }
+.interview-item { display: inline-flex; gap: 4px; border-radius: 4px; padding: 1px 4px; background: #f1f4fa; }
+.interview-time { color: #667085; }
 .shared-stage { display: flex; gap: 10px; align-items: center; font-size: .8rem; margin: 4px 0; }
-.shared-label { width: 40px; color: #475467; }
+.shared-label { min-width: 40px; color: #475467; }
 .shared-duration { color: #667085; }
-.position-details-row > td { padding: 16px !important; background: #f8faff; }
-.position-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; white-space: normal; }
+.position-row { background: #f8faff; }
+.position-row > td { padding-top: 10px !important; padding-bottom: 10px !important; }
 .state-card { min-height: 250px; }
 .state-content { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 14px; }
@@ -469,8 +499,7 @@ onMounted(() => { void initializeAndLoad(); });
   .applications-table :deep(thead) { display: none; }
   .company-row { background: #fff; border: 1px solid #dce3f2; border-radius: 12px; margin-top: 18px; padding: 12px; }
   .applications-table :deep(td) { height: auto !important; border: 0 !important; padding: 6px 0 !important; white-space: normal; overflow-wrap: anywhere; }
-  .position-details-row > td { padding: 12px 0 !important; background: transparent; }
-  .position-details { grid-template-columns: minmax(0, 1fr); }
+  .position-row { border-left: 2px solid #dce3f2; }
   .shared-stage { gap: 12px; }
 }
 </style>
