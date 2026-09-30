@@ -1,6 +1,6 @@
 # WEB-APP-006 公司多岗位流程表单与列表展开
 
-- 状态：`IMPLEMENTING`
+- 状态：`READY_FOR_TEST`
 - 角色：项目管理=主 Agent；独立测试=release_tests（本任务仅测试角色）；独立实现=company_implementation。
 - 用户价值：新增或编辑公司记录时能维护多个投递岗位和流程；主页能展开公司查看每个岗位的完整流程。
 - 范围：新增/编辑表单的岗位增删改、公司级 AI 面/测评/笔试、岗位级多面试编辑；公司列表分组展开及流程展示。
@@ -45,7 +45,7 @@
 ## Agent 交接
 
 - 任务编号：`WEB-APP-006`
-- 当前状态：`IMPLEMENTING`（APP-009 已验收 DONE；核心 UI RED 已确认）
+- 当前状态：`READY_FOR_TEST`（APP-009 已验收 DONE；核心 UI RED 已确认）
 - 发送角色：项目管理 Agent
 - 接收角色：测试 Agent（仅在后端 APP-009 契约冻结后）
 - 已完成内容与产物：本任务单及 `docs/requirements/APP-009.md`。
@@ -68,3 +68,10 @@
 - 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 接收实现角色：company_implementation；可写 `frontend/src/` 与 `docs/implementation-notes/WEB-APP-006.md`，测试目录只读。
 - 完成条件：实现冻结公开契约、运行必要自测并单独提交，交 READY_FOR_TEST；原测试角色补齐 nested CRUD、部分删除失败恢复、字段错误、真实 API 持久集成和桌面/375px截图后独立复测。
+
+## 2026-09-30 独立复测交接
+
+- 实现角色已在 c7737dc 交付 `READY_FOR_TEST`，说明见 `docs/implementation-notes/WEB-APP-006.md`；自测 Edge 11/11、受影响旧表单及时间单测 19/19、lint/build 通过。
+- 原测试角色已先行补充真实 Edge/HTTP 生命周期测试及旧 002/003/004/005 用户价值回归；测试提交仍与实现分离。
+- 本机独立 PostgreSQL 曾因临时目录根文件被清理而失效，测试角色在 411da26 将集群移至本机持久目录并验证注册、登录、多岗位新增；127.0.0.1:8019 API 已重启，合成库 `app009_acceptance` 已迁移最新。
+- 接收角色：release_tests，仅写测试与报告，独立运行新专项、受影响旧回归、真实 API+Edge 持久化与桌面/375px截图；若失败按 `TEST_FAILED` 交原实现角色修复，成功则交 PM 验收。
