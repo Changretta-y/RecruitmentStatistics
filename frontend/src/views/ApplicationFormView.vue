@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { onBeforeRouteLeave, useRoute, useRouter } from "vue-router";
 import { VAlert } from "vuetify/components/VAlert";
 import { VBtn } from "vuetify/components/VBtn";
 import { VCard } from "vuetify/components/VCard";
@@ -16,6 +16,7 @@ import type { JobApplication } from "../types/application";
 const route = useRoute();
 const router = useRouter();
 const application = ref<JobApplication | null>(null);
+const formRef = ref<InstanceType<typeof ApplicationForm> | null>(null);
 const loading = ref(false);
 const loadError = ref("");
 const isEdit = computed(() => route.name === "application-edit");
@@ -45,6 +46,7 @@ function backToApplications(): void {
 onMounted(() => {
   void loadApplication();
 });
+onBeforeRouteLeave(() => formRef.value?.confirmExit() ?? true);
 </script>
 
 <template>
@@ -61,6 +63,7 @@ onMounted(() => {
         </VCardText>
       </VCard>
       <ApplicationForm
+        ref="formRef"
         v-else-if="!isEdit || application"
         :mode="isEdit ? 'edit' : 'create'"
         :application="application"

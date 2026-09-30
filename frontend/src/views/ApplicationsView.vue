@@ -16,6 +16,8 @@ import { VTextField } from "vuetify/components/VTextField";
 
 import { delete as deleteRequest, list } from "../api/applications";
 import DateTimeField from "../components/DateTimeField.vue";
+import PositionFlowCard from "../components/PositionFlowCard.vue";
+import { readPositions, readSharedStages, SHARED_STAGES } from "../utils/company-application";
 import AppShell from "../components/AppShell.vue";
 import { useAuthStore } from "../stores/auth";
 import {
@@ -45,6 +47,7 @@ const statusOptions: Array<{ value: ApplicationStatus; title: string }> = [
 ];
 const stageOptions: Array<{ value: ApplicationStage; title: string }> = [
   { value: "ai_interview", title: "AI 面" },
+  { value: "assessment", title: "测评" },
   { value: "written_test", title: "笔试" },
   { value: "first_interview", title: "一面" },
   { value: "second_interview", title: "二面" },
@@ -82,6 +85,15 @@ const deleteTarget = ref<JobApplication | null>(null);
 const deleteLoading = ref(false);
 const deleteError = ref("");
 const successMessage = ref("");
+const expandedCompanies = ref(new Set<number>());
+
+function positionsOf(application: JobApplication) { return readPositions(application as unknown as Record<string, unknown>); }
+function sharedOf(application: JobApplication) { return readSharedStages(application as unknown as Record<string, unknown>); }
+function toggleCompany(id: number): void {
+  const next = new Set(expandedCompanies.value);
+  next.has(id) ? next.delete(id) : next.add(id);
+  expandedCompanies.value = next;
+}
 
 const hasResults = computed(() => data.value.results.length > 0);
 const hasNext = computed(() => Boolean(data.value.next) || page.value < data.value.totalPages);
@@ -204,13 +216,13 @@ async function performDelete(): Promise<void> {
     await refreshAfterDelete();
   } catch (error: unknown) {
     const status = (error as { response?: { status?: number } })?.response?.status;
-    confirmApplication.value = null;
     if (status === 404) {
+      confirmApplication.value = null;
       deleteError.value = "记录不存在或已被删除。";
       await loadApplications(currentQuery());
     } else if (status === 403) deleteError.value = "无权删除这条记录。";
-    else if (status === 500) deleteError.value = "服务暂时不可用，请稍后重试。";
-    else deleteError.value = "网络请求失败，请重试。";
+    else if (status === 500) deleteError.value = "删除失败，服务暂时不可用，请稍后重试。";
+    else deleteError.value = "删除失败，网络或服务暂时不可用，请重试。";
   } finally {
     deleteLoading.value = false;
   }
@@ -310,7 +322,7 @@ onMounted(() => { void initializeAndLoad(); });
     </VCard>
 
     <VAlert v-if="successMessage" class="mb-5" type="success" variant="tonal" role="status">{{ successMessage }}</VAlert>
-    <VAlert v-if="deleteError" class="mb-5" type="error" variant="tonal" role="alert">
+    <VAlert v-if="deleteError && !confirmApplication" class="mb-5" type="error" variant="tonal" role="alert">
       {{ deleteError }}
       <VBtn v-if="deleteTarget" class="ml-3" size="small" variant="text" @click="performDelete">重试</VBtn>
       <VBtn v-else-if="deleteError.includes('网络')" class="ml-3" size="small" variant="text" @click="retry">重试</VBtn>
@@ -351,49 +363,40 @@ onMounted(() => { void initializeAndLoad(); });
 
     <VCard v-else class="table-card" elevation="1">
       <VTable class="applications-table" hover>
-        <thead>
-          <tr>
-            <th>公司</th><th>岗位</th><th>状态</th><th>AI 面</th><th>笔试</th><th>一面</th>
-            <th>二面</th><th>三面</th><th>HR 面</th><th>更新时间</th><th>操作</th>
-          </tr>
-        </thead>
+        <thead><tr><th>公司</th><th>岗位</th><th>当前进度</th><th>公司共享流程</th><th>更新时间</th><th>操作</th></tr></thead>
         <tbody>
-          <tr v-for="application in data.results" :key="application.id">
-            <td class="font-weight-medium">
-              <a v-if="application.applicationUrl" class="company-link" :href="application.applicationUrl" target="_blank" rel="noopener noreferrer" @click.stop>{{ application.companyName }}</a>
-              <span v-else>{{ application.companyName }}</span>
-            </td>
-            <td>{{ application.positionName }}</td>
-            <td>
-              <VChip size="small" :color="statusColor(application)" variant="tonal">
-                {{ displayCurrentStage(application) }}
-              </VChip>
-            </td>
-            <td>{{ displayTime(application.aiInterviewTime) }}</td>
-            <td>{{ displayTime(application.writtenTestTime) }}</td>
-            <td>{{ displayTime(application.firstInterviewTime) }}</td>
-            <td>{{ displayTime(application.secondInterviewTime) }}</td>
-            <td>{{ displayTime(application.thirdInterviewTime) }}</td>
-            <td>{{ displayTime(application.hrInterviewTime) }}</td>
-            <td>{{ displayTime(application.updatedAt) }}</td>
-            <td class="actions-cell">
-              <VBtn
-                variant="text"
-                size="small"
-                :href="`/applications/${application.id}/edit`"
-                :aria-label="`编辑 ${application.companyName} ${application.positionName}`"
-                @click.prevent="openEdit(application)"
-              >编辑</VBtn>
-              <VBtn
-                variant="text"
-                size="small"
-                color="error"
-                :aria-label="`删除 ${application.companyName} ${application.positionName}`"
-                @click="openDeleteDialog(application)"
-                @keydown.enter.prevent="openDeleteDialog(application)"
-              >删除</VBtn>
-            </td>
-          </tr>
+          <template v-for="application in data.results" :key="application.id">
+            <tr class="company-row">
+              <td class="font-weight-medium">{{ application.companyName }}</td>
+              <td>
+                <span v-if="positionsOf(application).length === 1">{{ positionsOf(application)[0].positionName }}</span>
+                <template v-else>
+                  <span>{{ positionsOf(application).length }} 个岗位</span>
+                  <button type="button" class="expand-company" :aria-expanded="expandedCompanies.has(application.id)" :aria-controls="`company-positions-${application.id}`" :aria-label="`${expandedCompanies.has(application.id) ? '折叠' : '展开'} ${application.companyName} 的岗位`" @click="toggleCompany(application.id)">{{ expandedCompanies.has(application.id) ? '折叠' : '展开' }}</button>
+                </template>
+              </td>
+              <td><VChip size="small" :color="statusColor(application)" variant="tonal">{{ displayCurrentStage(application) }}</VChip></td>
+              <td class="shared-flow-cell">
+                <div v-for="(stage, index) in sharedOf(application)" :key="stage.type" class="shared-stage">
+                  <span class="shared-label">{{ SHARED_STAGES[index].title }}</span>
+                  <span>{{ displayTime(stage.scheduledAt) }}</span>
+                  <span v-if="stage.durationMinutes" class="shared-duration">{{ stage.durationMinutes }} 分钟</span>
+                </div>
+              </td>
+              <td>{{ displayTime(application.updatedAt) }}</td>
+              <td class="actions-cell">
+                <VBtn variant="text" size="small" :href="`/applications/${application.id}/edit`" :aria-label="`编辑 ${application.companyName} ${application.positionName}`" @click.prevent="openEdit(application)">编辑</VBtn>
+                <VBtn variant="text" size="small" color="error" :aria-label="`删除 ${application.companyName} ${application.positionName}`" @click="openDeleteDialog(application)" @keydown.enter.prevent="openDeleteDialog(application)">删除</VBtn>
+              </td>
+            </tr>
+            <tr v-if="positionsOf(application).length === 1 || expandedCompanies.has(application.id)" class="position-details-row">
+              <td colspan="6">
+                <section :id="`company-positions-${application.id}`" aria-label="岗位投递记录" class="position-details">
+                  <PositionFlowCard v-for="(position, index) in positionsOf(application)" :key="position.id ?? index" :position="position" />
+                </section>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </VTable>
     </VCard>
@@ -406,14 +409,15 @@ onMounted(() => { void initializeAndLoad(); });
     </nav>
 
     <VDialog v-model="deleteDialogOpen" max-width="460" aria-labelledby="delete-dialog-title">
-      <VCard role="dialog" aria-modal="true" aria-labelledby="delete-dialog-title">
+      <VCard>
         <VCardText class="pa-6">
           <div class="d-flex align-center ga-3 mb-4">
             <VIcon color="error" size="28">mdi-trash-can-outline</VIcon>
             <h2 id="delete-dialog-title" class="text-h6">确认删除投递记录？</h2>
           </div>
           <p class="mb-2">公司：{{ confirmApplication?.companyName }}</p>
-          <p class="mb-0">岗位：{{ confirmApplication?.positionName }}</p>
+          <p class="mb-0">岗位：{{ confirmApplication ? positionsOf(confirmApplication).length : 0 }} 个，删除后全部岗位及流程将一并移除。</p>
+          <VAlert v-if="deleteError" class="mt-4" type="error" variant="tonal" role="alert">{{ deleteError }}</VAlert>
         </VCardText>
         <div class="dialog-actions px-6 pb-6">
           <VBtn type="button" variant="text" :disabled="deleteLoading" @click="closeDeleteDialog">取消</VBtn>
@@ -441,6 +445,13 @@ onMounted(() => { void initializeAndLoad(); });
 .company-link { color: #3157d5; text-decoration: none; }
 .company-link:hover { text-decoration: underline; }
 .actions-cell { min-width: 150px; }
+.expand-company { margin-left: 12px; padding: 6px 10px; color: #3157d5; border-radius: 6px; background: #eef3ff; cursor: pointer; }
+.expand-company:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
+.shared-stage { display: flex; gap: 10px; align-items: center; font-size: .8rem; margin: 4px 0; }
+.shared-label { width: 40px; color: #475467; }
+.shared-duration { color: #667085; }
+.position-details-row > td { padding: 16px !important; background: #f8faff; }
+.position-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; white-space: normal; }
 .state-card { min-height: 250px; }
 .state-content { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 14px; }
@@ -452,11 +463,14 @@ onMounted(() => { void initializeAndLoad(); });
   .page-heading .v-btn { width: 100%; }
   .query-grid { grid-template-columns: 1fr; }
   .pagination-bar { flex-wrap: wrap; }
+  .table-card { overflow: visible; background: transparent; box-shadow: none !important; }
+  .applications-table :deep(.v-table__wrapper) { overflow: visible; }
+  .applications-table :deep(table), .applications-table :deep(tbody), .applications-table :deep(tr), .applications-table :deep(td) { display: block; width: 100%; }
+  .applications-table :deep(thead) { display: none; }
+  .company-row { background: #fff; border: 1px solid #dce3f2; border-radius: 12px; margin-top: 18px; padding: 12px; }
+  .applications-table :deep(td) { height: auto !important; border: 0 !important; padding: 6px 0 !important; white-space: normal; overflow-wrap: anywhere; }
+  .position-details-row > td { padding: 12px 0 !important; background: transparent; }
+  .position-details { grid-template-columns: minmax(0, 1fr); }
+  .shared-stage { gap: 12px; }
 }
-
-
-
 </style>
-
-
-

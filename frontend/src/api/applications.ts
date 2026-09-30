@@ -5,6 +5,7 @@ import {
   type JobApplication,
 } from "../types/application";
 import { parseApplicationQuery } from "../utils/application-query";
+import { readInterview, readPositions, readSharedStages } from "../utils/company-application";
 
 const applicationFieldMap: Record<string, string> = {
   companyName: "company_name",
@@ -55,6 +56,8 @@ function mapApplication(value: Record<string, unknown>): JobApplication {
     notes: (get("notes", "notes") as string) ?? "",
     createdAt: get("created_at", "createdAt") as string,
     updatedAt: get("updated_at", "updatedAt") as string,
+    positions: readPositions(value),
+    sharedStages: readSharedStages(value),
   };
 }
 
@@ -79,14 +82,16 @@ function mapPage(value: Record<string, unknown>): ApplicationPage {
   };
 }
 
-function toSnakePayload(payload: Record<string, unknown>): Record<string, unknown> {
+function toSnakePayload(payload: Record<string, unknown>, nested = false): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
     if (value === undefined) continue;
-    if (key === "id" || key === "user" || key === "createdAt" || key === "updatedAt" || key === "currentStage") {
+    if (!nested && ["id", "user", "createdAt", "updatedAt", "currentStage", "created_at", "updated_at", "current_stage"].includes(key)) {
       continue;
     }
-    result[applicationFieldMap[key] ?? key] = value;
+    const mapped = Array.isArray(value) ? value.map(item => item && typeof item === "object" ? toSnakePayload(item as Record<string, unknown>, true) : item)
+      : value && typeof value === "object" ? toSnakePayload(value as Record<string, unknown>, true) : value;
+    result[applicationFieldMap[key] ?? key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)] = mapped;
   }
   return result;
 }
@@ -136,6 +141,24 @@ export async function updateApplication(
 
 export async function deleteApplication(id: number | string): Promise<void> {
   await apiClient.delete(`/api/v1/applications/${id}/`);
+}
+
+export async function deletePosition(companyId: number | string, positionId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/applications/${companyId}/positions/${positionId}/`);
+}
+
+export async function deleteInterview(companyId: number | string, positionId: number, interviewId: number): Promise<void> {
+  await apiClient.delete(`/api/v1/applications/${companyId}/positions/${positionId}/interviews/${interviewId}/`);
+}
+
+export async function createInterview(companyId: number | string, positionId: number, payload: Record<string, unknown>) {
+  const response = await apiClient.post(`/api/v1/applications/${companyId}/positions/${positionId}/interviews/`, toSnakePayload(payload));
+  return readInterview(response.data);
+}
+
+export async function updateInterview(companyId: number | string, positionId: number, interviewId: number, payload: Record<string, unknown>) {
+  const response = await apiClient.patch(`/api/v1/applications/${companyId}/positions/${positionId}/interviews/${interviewId}/`, toSnakePayload(payload));
+  return readInterview(response.data);
 }
 
 export const fetchApplications = listApplications;

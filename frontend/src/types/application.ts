@@ -11,6 +11,7 @@ export type ApplicationStatus =
 
 export type ApplicationStage =
   | "ai_interview"
+  | "assessment"
   | "written_test"
   | "first_interview"
   | "second_interview"
@@ -31,7 +32,9 @@ export interface JobApplication {
   positionName: string;
   applicationUrl: string;
   applicationStatus: ApplicationStatus;
-  currentStage: ApplicationCurrentStage | null;
+  currentStage: ApplicationCurrentStage | string | null;
+  sharedStages?: SharedApplicationStage[];
+  positions?: ApplicationPosition[];
   applicationTime: string | null;
   aiInterviewTime: string | null;
   aiInterviewDurationMinutes: number | null;
@@ -48,6 +51,29 @@ export interface JobApplication {
   notes: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type SharedStageType = "ai_interview" | "assessment" | "written_test";
+
+export interface ApplicationInterview {
+  id?: number;
+  name: string;
+  scheduledAt: string | null;
+  durationMinutes: number | null;
+}
+
+export interface SharedApplicationStage extends Omit<ApplicationInterview, "id" | "name"> {
+  type: SharedStageType;
+}
+
+export interface ApplicationPosition {
+  id?: number;
+  positionName: string;
+  applicationUrl: string;
+  applicationStatus: ApplicationStatus;
+  applicationTime: string | null;
+  notes: string;
+  interviews: ApplicationInterview[];
 }
 
 export interface ApplicationPage {
