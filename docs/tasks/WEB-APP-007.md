@@ -1,6 +1,6 @@
 # WEB-APP-007 桌面端岗位横向列表与按需展开
 
-- 状态：`TEST_WRITING`
+- 状态：`IMPLEMENTING`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：公司列表在桌面上以岗位为横向行展示，减少纵向卡片占用；多岗位公司默认只显示一个岗位，用户需要时再展开其余岗位。
 - 范围：主页公司/岗位列表布局、岗位行默认可见数量、展开/折叠交互、桌面宽度可读性。
@@ -32,3 +32,10 @@
 - 测试角色先根据公开 UI/HTTP 行为确认 RED，再交实现角色；实现角色不得修改测试。
 - 测试角色完成条件：稳定 RED 测试及报告提交。
 - 实现角色完成条件：桌面布局实现、必要自检和 READY_FOR_TEST 说明。
+
+## 2026-09-30 核心 RED 与实现交接
+
+- 测试先行提交：`f4641fd`；报告：`docs/test-reports/WEB-APP-007-red.md`。
+- 有效 RED：Edge 桌面固定两次均为 3/5 通过、0 flaky；HTTP/认证基线、单岗位行、共享流程唯一和展开无写请求通过。多岗位默认首岗位没有独立可见横向行，展开后两个岗位仍在同一 `tr` 内呈纵向卡片，明确缺失岗位逐行布局。
+- 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 接收实现角色：company_implementation；可写 `frontend/src/` 与 `docs/implementation-notes/WEB-APP-007.md`，测试目录只读。共享流程和公司信息只在聚合首行显示，展开后其余岗位各追加一条横向 `tr`。
