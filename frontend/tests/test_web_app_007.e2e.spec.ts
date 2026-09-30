@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { resolve } from 'node:path';
 import { companyHttpFixture } from './web_app_006_http_fixture';
 
 const companyName = '多岗位示例科技';
@@ -6,6 +7,7 @@ const firstPosition = '后端工程师';
 const secondPosition = '前端工程师';
 const companyRow = (page: Page) => page.getByRole('row').filter({ hasText: companyName });
 const positionRow = (page: Page, name: string) => page.getByText(name, { exact: true }).filter({ visible: true }).first().locator('xpath=ancestor::tr[1]');
+const screenshot = (name: string) => resolve(process.cwd(), '../docs/test-reports', `WEB-APP-007-desktop-${name}.png`);
 
 test.describe('WEB-APP-007 desktop position rows', () => {
   test('baseline reads one company with two nested positions from public HTTP', async ({ page }) => {
@@ -35,6 +37,9 @@ test.describe('WEB-APP-007 desktop position rows', () => {
     await expect(first).toHaveCount(1);
     await expect(first).toBeVisible();
     await expect(second).toHaveCount(0);
+    await page.waitForTimeout(450);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: screenshot('default'), fullPage: true });
   });
 
   test('keyboard expansion shows every position in a distinct compact horizontal row and folds again', async ({ page }) => {
@@ -56,6 +61,8 @@ test.describe('WEB-APP-007 desktop position rows', () => {
     expect(firstBox?.height).toBeLessThan(160);
     expect(secondBox?.height).toBeLessThan(160);
     expect(secondBox!.y).toBeGreaterThan(firstBox!.y);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: screenshot('expanded'), fullPage: true });
     await expand.focus();
     await page.keyboard.press('Space');
     await expect(expand).toHaveAttribute('aria-expanded', 'false');
