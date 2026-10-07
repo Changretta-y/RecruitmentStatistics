@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 
 const NEW_LOGO_SHA256 = 'a09c7876116515619ac4a2ed0293ade91077627a446329458ced6b9515d79e88';
 const OLD_LOGO_SHA256 = '9c0420fd9643705bd36a1c9e8e5c4d80b5fe100ea5b22492bb1301abba610403';
@@ -77,5 +78,7 @@ test.describe('WEB-APP-010 supplied logo replacement', () => {
     const hash = sha256(await response.body());
     expect(hash, 'brand image must replace the old image, not retain it').not.toBe(OLD_LOGO_SHA256);
     expect(hash, 'brand image bytes match the new user attachment').toBe(NEW_LOGO_SHA256);
+    await page.waitForTimeout(450);
+    await page.screenshot({ path: resolve(process.cwd(), '../docs/test-reports/WEB-APP-010-brand.png'), fullPage: false });
   });
 });
