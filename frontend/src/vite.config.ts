@@ -11,7 +11,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: sourceRoot,
-    publicDir: false,
+    publicDir: fileURLToPath(new URL("../public", import.meta.url)),
     plugins: [vue()],
     resolve: {
       alias: {

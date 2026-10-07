@@ -46,7 +46,7 @@ async function logout(): Promise<void> {
     width="280"
   >
     <div class="drawer-brand pa-6">
-      <VIcon color="primary" size="30">mdi-briefcase-account</VIcon>
+      <img class="brand-logo" src="/logo.png" alt="校招进度管理系统 Logo" width="36" height="36" />
       <span class="drawer-title">我的投递进度</span>
     </div>
     <VDivider />
@@ -82,6 +82,7 @@ async function logout(): Promise<void> {
 <style scoped>
 .app-bar { position: sticky; top: 0; z-index: 10; }
 .drawer-brand { display: flex; align-items: center; gap: 12px; color: #182230; }
+.brand-logo { display: block; width: 36px; height: 36px; object-fit: contain; flex: none; }
 .drawer-title, .app-title { font-size: 1rem; line-height: 1.5; font-weight: 700; }
 .app-title { letter-spacing: .01em; }
 @media (max-width: 680px) { .user-name { display: none; } }
