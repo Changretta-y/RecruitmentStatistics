@@ -203,7 +203,7 @@ async function performDelete(): Promise<void> {
 }
 function displayStatus(value: ApplicationStatus): string { return APPLICATION_STATUS_LABELS[value] ?? value; }
 function statusColor(position: ApplicationPosition): string {
-  return position.applicationStatus === "rejected" ? "error" : "primary";
+  return position.currentStage === "rejected" ? "error" : "primary";
 }
 function safeLink(value: string): string | undefined {
   try {
@@ -337,10 +337,10 @@ onMounted(() => { void initializeAndLoad(); });
                 <span class="position-meta">投递：{{ displayTime(positionsOf(application)[0].applicationTime) }}</span>
                 <a v-if="safeLink(positionsOf(application)[0].applicationUrl)" class="position-link" :href="safeLink(positionsOf(application)[0].applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
                 <span v-if="positionsOf(application)[0].notes" class="position-notes" :title="positionsOf(application)[0].notes">备注：{{ positionsOf(application)[0].notes }}</span>
-                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="positionsOf(application)[0].interviews.length"><span v-for="(interview, index) in positionsOf(application)[0].interviews" :key="interview.id ?? index" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
+                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="positionsOf(application)[0].interviews.length"><span v-for="(interview, index) in positionsOf(application)[0].interviews" :key="interview.id ?? index" class="interview-item" :title="interview.name"><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </template>
             </td>
-            <td class="status-cell"><VChip v-if="positionsOf(application)[0]" size="small" :color="statusColor(positionsOf(application)[0])" variant="tonal">{{ displayStatus(positionsOf(application)[0].applicationStatus) }}</VChip></td>
+            <td class="status-cell"><VChip v-if="positionsOf(application)[0]" size="small" :color="statusColor(positionsOf(application)[0])" variant="tonal">{{ displayStatus(positionsOf(application)[0].currentStage) }}</VChip></td>
             <td class="shared-flow-cell">
               <div v-for="(stage, index) in sharedOf(application)" :key="stage.type" class="shared-stage">
                 <span class="shared-label">{{ SHARED_STAGES[index].title }}</span>
@@ -362,9 +362,9 @@ onMounted(() => { void initializeAndLoad(); });
                 <span class="position-meta">投递：{{ displayTime(position.applicationTime) }}</span>
                 <a v-if="safeLink(position.applicationUrl)" class="position-link" :href="safeLink(position.applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
                 <span v-if="position.notes" class="position-notes" :title="position.notes">备注：{{ position.notes }}</span>
-                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="position.interviews.length"><span v-for="(interview, interviewIndex) in position.interviews" :key="interview.id ?? interviewIndex" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
+                <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="position.interviews.length"><span v-for="(interview, interviewIndex) in position.interviews" :key="interview.id ?? interviewIndex" class="interview-item" :title="interview.name"><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </td>
-              <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStatus(position.applicationStatus) }}</VChip></td>
+              <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStatus(position.currentStage) }}</VChip></td>
               <td class="shared-flow-cell" aria-hidden="true"></td>
               <td class="updated-cell" aria-hidden="true"></td>
               <td class="actions-cell" aria-hidden="true"></td>

@@ -228,10 +228,11 @@ class PositionFieldsSerializer(serializers.Serializer):
 
 class PositionReadSerializer(serializers.ModelSerializer):
     interviews = InterviewSerializer(many=True, read_only=True)
+    current_stage = serializers.ReadOnlyField()
 
     class Meta:
         model = ApplicationPosition
-        fields = ('id', 'position_name', 'application_url', 'application_status', 'application_time', 'notes', 'interviews')
+        fields = ('id', 'position_name', 'application_url', 'application_status', 'current_stage', 'application_time', 'notes', 'interviews')
 
 
 class JobApplicationSerializer(LegacyJobApplicationSerializer):
@@ -352,9 +353,14 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
         return attrs
 
     def to_representation(self, instance):
+        positions = list(instance.positions.all())
+        shared_stages = list(instance.shared_stages.all())
+        instance._projection_positions = positions
+        for position in positions:
+            position._projection_shared_stages = shared_stages
         result = super().to_representation(instance)
-        result['positions'] = PositionReadSerializer(instance.positions.all(), many=True).data
-        stages = {stage.type: stage for stage in instance.shared_stages.all()}
+        result['positions'] = PositionReadSerializer(positions, many=True).data
+        stages = {stage.type: stage for stage in shared_stages}
         result['shared_stages'] = [SharedStageSerializer(stages[kind]).data if kind in stages else {'type': kind, 'scheduled_at': getattr(instance, kind + '_time', None), 'duration_minutes': getattr(instance, kind + '_duration_minutes', None)} for kind in SHARED_TYPES]
         return result
 

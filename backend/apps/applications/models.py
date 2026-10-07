@@ -1,6 +1,53 @@
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
+
+
+CURRENT_STAGE_PRIORITY = {
+    "assessment": 0,
+    "written_test": 1,
+    "first_interview": 2,
+    "second_interview": 3,
+    "other_interview": 4,
+    "hr_interview": 5,
+}
+
+_INTERVIEW_STAGE_ALIASES = {
+    "一面": "first_interview",
+    "第一面": "first_interview",
+    "第一轮": "first_interview",
+    "firstinterview": "first_interview",
+    "firstround": "first_interview",
+    "round1": "first_interview",
+    "1面": "first_interview",
+    "二面": "second_interview",
+    "第二面": "second_interview",
+    "第二轮": "second_interview",
+    "secondinterview": "second_interview",
+    "secondround": "second_interview",
+    "round2": "second_interview",
+    "2面": "second_interview",
+    "hr面": "hr_interview",
+    "hr面试": "hr_interview",
+    "hrinterview": "hr_interview",
+    "hrround": "hr_interview",
+}
+
+
+def _normalized_interview_name(value):
+    return "".join(str(value or "").strip().casefold().split())
+
+
+def interview_stage_value(name):
+    """Map a position interview name to the public application status value."""
+    return _INTERVIEW_STAGE_ALIASES.get(_normalized_interview_name(name), "other_interview")
+
+
+def _schedule_timestamp(value):
+    if timezone.is_naive(value):
+        value = timezone.make_aware(value, timezone.get_current_timezone())
+    return value.timestamp()
 
 
 class JobApplication(models.Model):
@@ -72,8 +119,12 @@ class JobApplication(models.Model):
 
     @property
     def current_stage(self) -> str:
-        """Return the read-only compatibility projection of application_status."""
-        return self.application_status
+        """Return the latest read-only projection for the first position."""
+        positions = getattr(self, "_projection_positions", None)
+        if positions is None:
+            positions = self.positions.order_by("id")
+        first = next(iter(positions), None)
+        return current_stage_for_position(first) if first is not None else self.application_status
 
 
 SHARED_TYPES = ("ai_interview", "assessment", "written_test")
@@ -112,3 +163,61 @@ class PositionInterview(models.Model):
 
     class Meta:
         ordering = ["id"]
+
+
+def current_stage_for_position(position, *, shared_stages=None) -> str:
+    """Project the latest scheduled shared or position flow into a canonical status."""
+    if position.application_status == JobApplication.Status.REJECTED:
+        return JobApplication.Status.REJECTED
+
+    if shared_stages is None:
+        shared_stages = getattr(position, "_projection_shared_stages", None)
+    if shared_stages is None:
+        shared_stages = position.company.shared_stages.all()
+
+    candidates = []
+    shared_stage_values = {
+        "assessment": "assessment",
+        "written_test": "written_test",
+        "ai_interview": "other_interview",
+    }
+    for stage in shared_stages:
+        if stage.scheduled_at is None:
+            continue
+        value = shared_stage_values.get(stage.type)
+        if value is not None:
+            candidates.append((
+                _schedule_timestamp(stage.scheduled_at),
+                CURRENT_STAGE_PRIORITY[value],
+                stage.pk or 0,
+                0,
+                value,
+            ))
+
+    for interview in position.interviews.all():
+        if interview.scheduled_at is None:
+            continue
+        value = interview_stage_value(interview.name)
+        candidates.append((
+            _schedule_timestamp(interview.scheduled_at),
+            CURRENT_STAGE_PRIORITY[value],
+            interview.pk or 0,
+            1,
+            value,
+        ))
+
+    if not candidates:
+        return position.application_status
+    return max(candidates)[-1]
+
+
+def current_stage_for_company(company) -> str:
+    """Return the projection of the company's first/primary position."""
+    positions = getattr(company, "_projection_positions", None)
+    if positions is None:
+        positions = company.positions.order_by("id")
+    first = next(iter(positions), None)
+    return current_stage_for_position(first) if first is not None else company.application_status
+
+
+ApplicationPosition.current_stage = property(current_stage_for_position)

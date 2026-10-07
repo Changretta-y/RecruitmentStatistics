@@ -35,6 +35,7 @@ export function readPositions(source: Record<string, unknown>): ApplicationPosit
       positionName: String(applicationValue(position, "positionName") ?? ""),
       applicationUrl: String(applicationValue(position, "applicationUrl") ?? ""),
       applicationStatus: (applicationValue(position, "applicationStatus") ?? "applied") as ApplicationPosition["applicationStatus"],
+      currentStage: (applicationValue(position, "currentStage") ?? applicationValue(position, "applicationStatus") ?? "applied") as ApplicationPosition["currentStage"],
       applicationTime: applicationValue(position, "applicationTime") as string | null ?? null,
       notes: String(position.notes ?? ""),
       interviews: Array.isArray(interviews) ? interviews.map(item => readInterview(item as Record<string, unknown>)) : LEGACY_INTERVIEWS.flatMap(stage => {

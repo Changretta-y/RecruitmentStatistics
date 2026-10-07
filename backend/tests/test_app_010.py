@@ -212,7 +212,9 @@ def test_status_patch_updates_projection_but_preserves_schedule_and_duration(
     assert created.status_code == 201
     original = _json(created)
     assert original["positions"][0]["application_status"] == "applied"
-    assert original.get("current_stage", "applied") == "applied"
+    # APP-011: the latest same-time custom interview projects as other_interview;
+    # the saved status remains applied until explicitly changed.
+    assert original.get("current_stage", "applied") == "other_interview"
 
     changed = _patch(
         client,
@@ -229,7 +231,7 @@ def test_status_patch_updates_projection_but_preserves_schedule_and_duration(
     body = _json(changed)
     assert body["positions"][0]["application_status"] == "second_interview"
     assert body.get("application_status", "second_interview") == "second_interview"
-    assert body.get("current_stage", "second_interview") == "second_interview"
+    assert body.get("current_stage", "second_interview") == "other_interview"
     assessment = next(stage for stage in body["shared_stages"] if stage["type"] == "assessment")
     assert assessment["scheduled_at"] is not None
     assert assessment["duration_minutes"] == 45
@@ -264,7 +266,7 @@ def test_schedule_changes_do_not_derive_or_change_application_status(client, own
     )
     assert with_assessment.status_code == 200
     assert _json(with_assessment)["positions"][0]["application_status"] == "applied"
-    assert _json(with_assessment).get("current_stage", "applied") == "applied"
+    assert _json(with_assessment).get("current_stage", "applied") == "assessment"
 
     cleared = _patch(
         client,
@@ -290,7 +292,7 @@ def test_schedule_changes_do_not_derive_or_change_application_status(client, own
     detail = client.get(f"{APPLICATIONS_URL}{company['id']}/", **_headers(owner))
     assert detail.status_code == 200
     assert _json(detail)["positions"][0]["application_status"] == "applied"
-    assert _json(detail).get("current_stage", "applied") == "applied"
+    assert _json(detail).get("current_stage", "applied") == "first_interview"
 
 
 @pytest.mark.django_db

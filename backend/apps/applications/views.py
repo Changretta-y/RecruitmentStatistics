@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 
 from backend.config.schema import ErrorResponse
-from .models import ApplicationPosition, JobApplication, PositionInterview
+from .models import ApplicationPosition, JobApplication, PositionInterview, current_stage_for_position
 from .flows import sync_projection
 from .pagination import JobApplicationPagination
 from .serializers import InterviewSerializer, JobApplicationSerializer
@@ -106,7 +106,16 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
                     "application_status",
                     "application_status must contain one or more supported statuses.",
                 )
-            queryset = queryset.filter(Q(application_status__in=application_statuses) | Q(positions__application_status__in=application_statuses))
+            matching_company_ids = []
+            for company in queryset:
+                positions = list(company.positions.all())
+                shared_stages = list(company.shared_stages.all())
+                if any(
+                    current_stage_for_position(position, shared_stages=shared_stages) in application_statuses
+                    for position in positions
+                ) or (not positions and company.application_status in application_statuses):
+                    matching_company_ids.append(company.pk)
+            queryset = queryset.filter(pk__in=matching_company_ids)
 
         if "stage" in params:
             self._validation_error(

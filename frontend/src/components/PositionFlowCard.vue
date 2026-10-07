@@ -16,7 +16,7 @@ function safeLink(value: string): string | undefined {
 
 <template>
   <article class="position-flow" :aria-label="`${position.positionName}投递记录`">
-    <header class="position-heading"><h3>{{ position.positionName }}</h3><span class="position-status">{{ APPLICATION_STATUS_LABELS[position.applicationStatus] }}</span></header>
+    <header class="position-heading"><h3>{{ position.positionName }}</h3><span class="position-status">{{ APPLICATION_STATUS_LABELS[position.currentStage] }}</span></header>
     <p class="position-meta">投递时间：{{ displayTime(position.applicationTime) }}</p>
     <a v-if="safeLink(position.applicationUrl)" :href="safeLink(position.applicationUrl)" target="_blank" rel="noopener noreferrer" class="position-link">查看投递链接</a>
     <p v-if="position.notes" class="position-notes">备注：{{ position.notes }}</p>

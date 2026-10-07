@@ -75,6 +75,7 @@ export interface ApplicationPosition {
   positionName: string;
   applicationUrl: string;
   applicationStatus: ApplicationStatus;
+  currentStage: ApplicationCurrentStage;
   applicationTime: string | null;
   notes: string;
   interviews: ApplicationInterview[];

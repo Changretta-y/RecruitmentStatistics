@@ -513,15 +513,15 @@ def test_duplicate_shared_types_update_once_and_clear_date_clears_duration(clien
     assert len(assessments) == 1
     assert assessments[0]["scheduled_at"].startswith("2026-10-11T01:00:00")
     assert assessments[0]["duration_minutes"] == 70
-    # APP-010 current_stage is a read-only projection of the main position status,
-    # not a stage-date-derived value.
-    assert company["current_stage"] == company["positions"][0]["application_status"]
+    # APP-011: the latest scheduled shared assessment is the read-only projection;
+    # the saved position status remains applied.
+    assert company["current_stage"] == "assessment"
     cleared = _patch(client, owner, company["id"], {"shared_stages": [{"type": "assessment", "scheduled_at": None}]})
     assert cleared.status_code == 200
     assessment = next(item for item in _json(cleared)["shared_stages"] if item["type"] == "assessment")
     assert assessment["scheduled_at"] is None
     assert assessment["duration_minutes"] is None
-    assert _json(cleared)["current_stage"] == _json(cleared)["positions"][0]["application_status"]
+    assert _json(cleared)["current_stage"] == "applied"
 
 
 @pytest.mark.django_db
@@ -559,8 +559,9 @@ def test_nested_interview_patch_keeps_omitted_siblings_and_defaults_durations(cl
     position = company["positions"][0]
     first, second = position["interviews"]
     assert first["duration_minutes"] == 60
-    # The interview remains nested flow data; it no longer changes the business status projection.
-    assert company["current_stage"] == company["positions"][0]["application_status"]
+    # APP-011: the latest custom interview projects as other_interview;
+    # nested flow updates must still preserve the sibling records and durations.
+    assert company["current_stage"] == "other_interview"
     updated = _patch(client, owner, company["id"], {"positions": [{
         "id": position["id"],
         "interviews": [{"id": first["id"], "scheduled_at": "2026-10-14T01:00:00Z"}, {"name": "追加面试", "scheduled_at": None}],
@@ -570,7 +571,7 @@ def test_nested_interview_patch_keeps_omitted_siblings_and_defaults_durations(cl
     assert len(interviews) == 3
     assert interviews[second["id"]] == second
     assert interviews[first["id"]]["duration_minutes"] == 60
-    assert _json(updated)["current_stage"] == _json(updated)["positions"][0]["application_status"]
+    assert _json(updated)["current_stage"] == "first_interview"
 
 
 @pytest.mark.django_db
