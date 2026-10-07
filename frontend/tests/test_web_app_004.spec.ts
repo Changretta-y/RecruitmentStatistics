@@ -46,7 +46,7 @@ const firstApplication = {
   id: 41,
   companyName: "删除示例科技",
   positionName: "后端工程师",
-  applicationStatus: "in_progress",
+  applicationStatus: "first_interview",
   currentStage: "first_interview",
   applicationTime: "2026-09-10T02:00:00Z",
   aiInterviewTime: null,

@@ -2,12 +2,21 @@ export const APPLICATION_PAGE_SIZES = [10, 20, 50, 100] as const;
 
 export type ApplicationPageSize = (typeof APPLICATION_PAGE_SIZES)[number];
 
-export type ApplicationStatus =
-  | "applied"
-  | "in_progress"
-  | "offer"
-  | "rejected"
-  | "withdrawn";
+export const APPLICATION_STATUS_OPTIONS = [
+  { value: "applied", title: "投递" },
+  { value: "assessment", title: "测评" },
+  { value: "written_test", title: "笔试" },
+  { value: "first_interview", title: "一面" },
+  { value: "second_interview", title: "二面" },
+  { value: "other_interview", title: "其他轮次" },
+  { value: "hr_interview", title: "HR面" },
+  { value: "rejected", title: "拒绝" },
+] as const;
+
+export type ApplicationStatus = (typeof APPLICATION_STATUS_OPTIONS)[number]["value"];
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = Object.fromEntries(
+  APPLICATION_STATUS_OPTIONS.map(({ value, title }) => [value, title]),
+) as Record<ApplicationStatus, string>;
 
 export type ApplicationStage =
   | "ai_interview"
@@ -18,12 +27,7 @@ export type ApplicationStage =
   | "third_interview"
   | "hr_interview";
 
-export type ApplicationCurrentStage =
-  | ApplicationStage
-  | "applied"
-  | "offer"
-  | "rejected"
-  | "withdrawn";
+export type ApplicationCurrentStage = ApplicationStatus;
 
 export interface JobApplication {
   id: number;
@@ -32,7 +36,7 @@ export interface JobApplication {
   positionName: string;
   applicationUrl: string;
   applicationStatus: ApplicationStatus;
-  currentStage: ApplicationCurrentStage | string | null;
+  currentStage: ApplicationCurrentStage | null;
   sharedStages?: SharedApplicationStage[];
   positions?: ApplicationPosition[];
   applicationTime: string | null;
@@ -101,7 +105,6 @@ export interface ApplicationQueryState {
   pageSize: ApplicationPageSize;
   search: string;
   applicationStatus?: ApplicationStatus | ApplicationStatus[];
-  stage?: ApplicationStage;
   applicationTimeAfter?: string;
   applicationTimeBefore?: string;
   ordering: string;

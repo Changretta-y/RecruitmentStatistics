@@ -7,7 +7,7 @@ import { VSelect } from "vuetify/components/VSelect";
 import { VTextarea } from "vuetify/components/VTextarea";
 import { VTextField } from "vuetify/components/VTextField";
 import { create, update, deleteInterview, deletePosition } from "../api/applications";
-import type { ApplicationStatus, JobApplication, SharedStageType } from "../types/application";
+import { APPLICATION_STATUS_OPTIONS, type ApplicationStatus, type JobApplication, type SharedStageType } from "../types/application";
 import { applicationValue, readPositions, readSharedStages, SHARED_STAGES } from "../utils/company-application";
 
 type FormMode = "create" | "edit";
@@ -26,10 +26,7 @@ interface PositionDraft {
 }
 interface SharedDraft extends ScheduleDraft { type: SharedStageType; }
 let keySequence = 0;
-const statuses = [
-  { value: "applied", title: "已投递" }, { value: "in_progress", title: "进行中" },
-  { value: "offer", title: "Offer" }, { value: "rejected", title: "已拒绝" }, { value: "withdrawn", title: "已撤回" },
-];
+const statuses = APPLICATION_STATUS_OPTIONS;
 function emptyPosition(): PositionDraft {
   return { key: ++keySequence, positionName: "", applicationUrl: "", applicationStatus: "applied", applicationTime: null, notes: "", interviews: [] };
 }
@@ -313,7 +310,7 @@ defineExpose({ confirmExit, isDirty });
           <div class="position-grid">
             <VTextField v-model="position.positionName" :name="index === 0 ? 'positionName' : `positionName${index + 1}`" label="岗位名称" required :disabled="isSubmitting" :error-messages="error(`positions.${index}.positionName`)" />
             <VTextField v-model="position.applicationUrl" :name="index === 0 ? 'applicationUrl' : `applicationUrl${index + 1}`" label="投递链接" type="url" placeholder="https://..." :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationUrl`)" />
-            <VSelect v-model="position.applicationStatus" :name="index === 0 ? 'applicationStatus' : `applicationStatus${index + 1}`" label="投递状态" :items="statuses" item-title="title" item-value="value" :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationStatus`)" />
+            <VSelect v-model="position.applicationStatus" :name="index === 0 ? 'applicationStatus' : `applicationStatus${index + 1}`" label="业务状态" :items="statuses" item-title="title" item-value="value" :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationStatus`)" />
             <VTextField v-model="position.applicationTime" :name="index === 0 ? 'applicationTime' : `applicationTime${index + 1}`" label="投递时间" type="datetime-local" clearable :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationTime`)" />
             <VTextarea v-model="position.notes" :name="index === 0 ? 'notes' : `notes${index + 1}`" label="备注" rows="2" auto-grow class="full-width" :disabled="isSubmitting" :error-messages="error(`positions.${index}.notes`)" />
           </div>

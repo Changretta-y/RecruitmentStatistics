@@ -14,7 +14,7 @@ const originalCompany = () => ({
     { type: 'assessment', scheduledAt: null, durationMinutes: null },
     { type: 'written_test', scheduledAt: '2026-09-03T02:00:00Z', durationMinutes: 80 },
   ],
-  positions: [{ id: 18, positionName: '原岗位', applicationStatus: 'in_progress', applicationUrl: 'https://jobs.example.invalid/original', applicationTime: '2026-09-01T02:00:00Z', notes: '原备注', interviews: [{ id: 19, name: '一面', scheduledAt: '2026-09-04T02:00:00Z', durationMinutes: 60 }] }],
+  positions: [{ id: 18, positionName: '原岗位', applicationStatus: 'first_interview', applicationUrl: 'https://jobs.example.invalid/original', applicationTime: '2026-09-01T02:00:00Z', notes: '原备注', interviews: [{ id: 19, name: '一面', scheduledAt: '2026-09-04T02:00:00Z', durationMinutes: 60 }] }],
 });
 async function form(props: Record<string, unknown> = {}) {
   const { default: Form } = await import('../src/components/ApplicationForm.vue');
@@ -37,7 +37,7 @@ describe('WEB-APP-003 form behavior under APP-009 nested contract', () => {
     const wrapper = await form();
     expect(publicControl(wrapper, '公司名称').exists()).toBe(true);
     const role = publicGroup(wrapper, '岗位1');
-    for (const label of ['岗位名称', '投递链接', '投递状态', '投递时间', '备注']) expect(publicControl(role, label).exists()).toBe(true);
+    for (const label of ['岗位名称', '投递链接', '业务状态', '投递时间', '备注']) expect(publicControl(role, label).exists()).toBe(true);
     for (const label of ['AI 面时间', '测评时间', '笔试时间']) expect(publicControl(wrapper, label).element.value).toBe('');
     await publicButton(role, '添加面试').trigger('click');
     const interview = publicGroup(role, '面试1');
@@ -79,7 +79,7 @@ describe('WEB-APP-003 form behavior under APP-009 nested contract', () => {
     expect(calls()).toHaveLength(0); expect(wrapper.text()).toMatch(/公司|岗位|必填/);
     await required(wrapper);
     const role = publicGroup(wrapper, '岗位1');
-    const status = publicControl(role, '投递状态');
+    const status = publicControl(role, '业务状态');
     await status.setValue('not-a-status');
     const time = publicControl(role, '投递时间');
     expect(time.attributes('type')).toBe('datetime-local');

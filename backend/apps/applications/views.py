@@ -12,7 +12,7 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 
 from backend.config.schema import ErrorResponse
-from .models import ApplicationPosition, INTERVIEW_NAMES, JobApplication, PositionInterview
+from .models import ApplicationPosition, JobApplication, PositionInterview
 from .flows import sync_projection
 from .pagination import JobApplicationPagination
 from .serializers import InterviewSerializer, JobApplicationSerializer
@@ -51,7 +51,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = JobApplicationSerializer
     pagination_class = JobApplicationPagination
-    stage_fields = {
+    ordering_stage_fields = {
         "assessment": "assessment_time",
         "ai_interview": "ai_interview_time",
         "written_test": "written_test_time",
@@ -65,7 +65,7 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
             "created_at",
             "updated_at",
             "application_time",
-            *stage_fields.values(),
+        *ordering_stage_fields.values(),
         }
     )
 
@@ -108,21 +108,11 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
                 )
             queryset = queryset.filter(Q(application_status__in=application_statuses) | Q(positions__application_status__in=application_statuses))
 
-        stage = params.get("stage")
-        if stage is not None:
-            stage_field = self.stage_fields.get(stage)
-            if stage_field is None:
-                self._validation_error(
-                    "stage",
-                    "stage is not a supported interview stage.",
-                )
-            if stage in ("ai_interview", "assessment", "written_test"):
-                condition = Q(shared_stages__type=stage, shared_stages__scheduled_at__isnull=False)
-            else:
-                condition = Q(positions__interviews__name=INTERVIEW_NAMES[stage], positions__interviews__scheduled_at__isnull=False)
-            if stage != "assessment":
-                condition |= Q(**{f"{stage_field}__isnull": False})
-            queryset = queryset.filter(condition)
+        if "stage" in params:
+            self._validation_error(
+                "stage",
+                "stage is no longer an application business-status filter.",
+            )
 
         application_time_after = self._parse_datetime(
             "application_time_after",

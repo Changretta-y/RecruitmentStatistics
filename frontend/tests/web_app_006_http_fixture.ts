@@ -2,7 +2,7 @@ import { expect, type Page, type Route } from '@playwright/test';
 
 export const DATE = '2026-09-29T02:00:00Z';
 export const makePosition = (id: number, name: string) => ({
-  id, position_name: name, application_status: 'in_progress',
+  id, position_name: name, application_status: 'assessment',
   application_url: `https://jobs.example.invalid/${id}`, application_time: DATE, notes: `${name}备注`,
   interviews: [
     { id: id * 10, name: '技术面', scheduled_at: DATE, duration_minutes: 90 },
@@ -16,7 +16,7 @@ export const makeCompany = () => ({
     { type: 'ai_interview', scheduled_at: DATE, duration_minutes: 30 },
     { type: 'assessment', scheduled_at: DATE, duration_minutes: 45 },
     { type: 'written_test', scheduled_at: DATE, duration_minutes: 60 },
-  ], current_stage: '技术面', created_at: DATE, updated_at: DATE,
+  ], current_stage: 'assessment', created_at: DATE, updated_at: DATE,
   ai_interview_time: DATE, ai_interview_duration_minutes: 30,
   written_test_time: DATE, written_test_duration_minutes: 60,
 });

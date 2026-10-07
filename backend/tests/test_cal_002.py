@@ -74,7 +74,8 @@ def _application_payload(**overrides):
     payload = {
         "company_name": "日历测试科技",
         "position_name": "后端工程师",
-        "application_status": "in_progress",
+        # APP-010 canonical status; calendar tests exercise scheduled events, not legacy status aliases.
+        "application_status": "assessment",
         "application_time": "2026-08-01T09:00:00+08:00",
         "ai_interview_time": None,
         "written_test_time": None,
@@ -308,7 +309,8 @@ def test_terminal_application_keeps_scheduled_stage_and_clear_or_delete_removes_
         client,
         owner,
         company_name="已拿 Offer 仍有安排",
-        application_status="offer",
+        # APP-010 maps the retired offer alias to the canonical terminal status.
+        application_status="rejected",
         second_interview_time="2026-09-20T13:00:00+08:00",
         second_interview_duration_minutes=90,
     )

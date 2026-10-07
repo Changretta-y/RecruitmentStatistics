@@ -42,7 +42,7 @@ const applications = [
     id: 1,
     companyName: "示例科技",
     positionName: "后端工程师",
-    applicationStatus: "in_progress",
+    applicationStatus: "first_interview",
     currentStage: "first_interview",
     applicationTime: "2026-09-10T02:00:00Z",
     aiInterviewTime: null,
@@ -133,14 +133,14 @@ describe("WEB-APP-002 ApplicationsView", () => {
     expect(JSON.stringify(requestArguments())).toContain("-updated_at");
     expect(wrapper.text()).toContain("示例科技");
     expect(wrapper.text()).toContain("后端工程师");
-    expect(wrapper.text()).toMatch(/in_progress|进行中/);
+    expect(wrapper.text()).toMatch(/first_interview|一面/);
     expect(wrapper.text()).toMatch(/first_interview|一面/);
     expect(wrapper.text()).toContain("2026-09-13");
     expect(wrapper.text()).toContain("2026-09-11");
     expect(wrapper.text()).toContain("2026-09-12");
   });
 
-  it("sends search, status/stage/time filters and ordering, then resets page on query changes", async () => {
+  it("sends canonical status/time filters and ordering, then resets page on query changes", async () => {
     const { wrapper } = await mountView({ page: "3", page_size: "50" });
 
     const search = searchInput(wrapper);
@@ -149,9 +149,7 @@ describe("WEB-APP-002 ApplicationsView", () => {
     await search.trigger("keyup.enter");
 
     const status = selectInput(wrapper, ["status", "applicationStatus", "application_status"]);
-    const stage = selectInput(wrapper, ["stage", "currentStage", "current_stage"]);
-    if (status.exists()) { await status.setValue("in_progress"); await status.trigger("change"); }
-    if (stage.exists()) { await stage.setValue("first_interview"); await stage.trigger("change"); }
+    if (status.exists()) { await status.setValue("first_interview"); await status.trigger("change"); }
     const after = wrapper.find('input[name="applicationTimeAfter"], input[name="application_time_after"]');
     const before = wrapper.find('input[name="applicationTimeBefore"], input[name="application_time_before"]');
     if (after.exists()) await after.setValue("2026-09-01T00:00:00+08:00");
@@ -166,8 +164,9 @@ describe("WEB-APP-002 ApplicationsView", () => {
 
     const request = latestRequest();
     expect(JSON.stringify(request)).toContain("示例");
-    expect(JSON.stringify(request)).toContain("in_progress");
     expect(JSON.stringify(request)).toContain("first_interview");
+    expect(JSON.stringify(request)).toContain("first_interview");
+    expect(JSON.stringify(request)).not.toContain('"stage"');
     expect(JSON.stringify(request)).toContain("2026-09-01");
     expect(JSON.stringify(request)).toContain("-first_interview_time");
     expect(JSON.stringify(request)).toContain("page");
@@ -198,8 +197,7 @@ describe("WEB-APP-002 ApplicationsView", () => {
       page: "2",
       page_size: "50",
       search: "示例",
-      application_status: "in_progress",
-      stage: "first_interview",
+      application_status: "first_interview",
       ordering: "-first_interview_time",
     });
     expect(searchInput(wrapper).element.value).toBe("示例");

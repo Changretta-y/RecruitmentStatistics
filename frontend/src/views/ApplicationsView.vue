@@ -28,7 +28,8 @@ import {
   APPLICATION_PAGE_SIZES,
   type ApplicationPage,
   type ApplicationQueryState,
-  type ApplicationStage,
+  APPLICATION_STATUS_OPTIONS,
+  APPLICATION_STATUS_LABELS,
   type ApplicationStatus,
   type ApplicationPosition,
   type JobApplication,
@@ -38,22 +39,7 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 
-const statusOptions: Array<{ value: ApplicationStatus; title: string }> = [
-  { value: "applied", title: "已投递" },
-  { value: "in_progress", title: "进行中" },
-  { value: "offer", title: "Offer" },
-  { value: "rejected", title: "已拒绝" },
-  { value: "withdrawn", title: "已撤回" },
-];
-const stageOptions: Array<{ value: ApplicationStage; title: string }> = [
-  { value: "ai_interview", title: "AI 面" },
-  { value: "assessment", title: "测评" },
-  { value: "written_test", title: "笔试" },
-  { value: "first_interview", title: "一面" },
-  { value: "second_interview", title: "二面" },
-  { value: "third_interview", title: "三面" },
-  { value: "hr_interview", title: "HR 面" },
-];
+const statusOptions = APPLICATION_STATUS_OPTIONS;
 const orderingOptions = [
   { value: "-updated_at", title: "最近更新" },
   { value: "created_at", title: "创建时间正序" },
@@ -65,8 +51,6 @@ const orderingOptions = [
 
 const search = ref("");
 const applicationStatus = ref<ApplicationStatus[]>([]);
-const statusCompatibilityValue = ref("");
-const stage = ref<ApplicationStage | undefined>();
 const applicationTimeAfter = ref("");
 const applicationTimeBefore = ref("");
 const ordering = ref(DEFAULT_ORDERING);
@@ -99,7 +83,7 @@ const hasResults = computed(() => data.value.results.length > 0);
 const hasNext = computed(() => Boolean(data.value.next) || page.value < data.value.totalPages);
 const hasPrevious = computed(() => Boolean(data.value.previous) || page.value > 1);
 const hasActiveFilters = computed(() => Boolean(
-  search.value || applicationStatus.value.length || stage.value || applicationTimeAfter.value || applicationTimeBefore.value,
+  search.value || applicationStatus.value.length || applicationTimeAfter.value || applicationTimeBefore.value,
 ));
 const deleteDialogOpen = computed({
   get: () => Boolean(confirmApplication.value),
@@ -118,8 +102,6 @@ function applyQuery(state: ApplicationQueryState): void {
   applicationStatus.value = Array.isArray(state.applicationStatus)
     ? [...state.applicationStatus]
     : state.applicationStatus ? [state.applicationStatus] : [];
-  statusCompatibilityValue.value = applicationStatus.value.length === 1 ? applicationStatus.value[0] : "";
-  stage.value = state.stage;
   applicationTimeAfter.value = toDateTimeLocal(state.applicationTimeAfter ?? "");
   applicationTimeBefore.value = toDateTimeLocal(state.applicationTimeBefore ?? "");
   ordering.value = state.ordering;
@@ -131,7 +113,6 @@ function currentQuery(): ApplicationQueryState {
     pageSize: pageSize.value,
     search: search.value,
     ...(applicationStatus.value.length > 0 ? { applicationStatus: [...applicationStatus.value] } : {}),
-    ...(stage.value ? { stage: stage.value } : {}),
     ...(applicationTimeAfter.value ? { applicationTimeAfter: toIsoDateTime(applicationTimeAfter.value) } : {}),
     ...(applicationTimeBefore.value ? { applicationTimeBefore: toIsoDateTime(applicationTimeBefore.value) } : {}),
     ordering: ordering.value || DEFAULT_ORDERING,
@@ -140,13 +121,6 @@ function currentQuery(): ApplicationQueryState {
 async function changeStatus(value: ApplicationStatus[] | null | undefined): Promise<void> {
   applicationStatus.value = Array.isArray(value) ? value : [];
   await updateUrlAndLoad({ ...currentQuery(), page: 1 });
-}
-function syncStatus(event: Event): void {
-  const value = (event.target as HTMLSelectElement).value as ApplicationStatus;
-  void changeStatus(value ? [value] : []);
-}
-function syncStage(event: Event): void {
-  stage.value = (event.target as HTMLSelectElement).value as ApplicationStage || undefined;
 }
 function syncOrdering(event: Event): void {
   ordering.value = (event.target as HTMLSelectElement).value || DEFAULT_ORDERING;
@@ -227,17 +201,9 @@ async function performDelete(): Promise<void> {
     deleteLoading.value = false;
   }
 }
-function displayStatus(value: string): string {
-  return statusOptions.find((option) => option.value === value)?.title ?? value;
-}
-function displayStage(value: string | null): string {
-  if (!value) return "—";
-  return stageOptions.find((option) => option.value === value)?.title ?? displayStatus(value);
-}
+function displayStatus(value: ApplicationStatus): string { return APPLICATION_STATUS_LABELS[value] ?? value; }
 function statusColor(position: ApplicationPosition): string {
-  if (position.applicationStatus === "offer") return "success";
-  if (position.applicationStatus === "rejected" || position.applicationStatus === "withdrawn") return "error";
-  return "primary";
+  return position.applicationStatus === "rejected" ? "error" : "primary";
 }
 function safeLink(value: string): string | undefined {
   try {
@@ -296,7 +262,6 @@ onMounted(() => { void initializeAndLoad(); });
         <form aria-label="投递查询" class="query-grid" @submit.prevent="submitQuery">
           <VTextField v-model="search" name="search" label="关键字" placeholder="搜索公司或岗位" prepend-inner-icon="mdi-magnify" @keyup.enter.prevent="submitQuery" />
           <VSelect v-model="applicationStatus" name="status" label="投递状态（可多选）" :items="statusOptions" item-title="title" item-value="value" multiple chips closable-chips clearable @update:model-value="changeStatus" />
-          <VSelect v-model="stage" name="stage" label="当前阶段" :items="stageOptions" item-title="title" item-value="value" clearable />
           <DateTimeField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" clearable />
           <DateTimeField v-model="applicationTimeBefore" name="applicationTimeBefore" label="投递时间止" clearable />
           <VSelect v-model="ordering" label="排序" :items="orderingOptions" item-title="title" item-value="value" />
@@ -306,14 +271,6 @@ onMounted(() => { void initializeAndLoad(); });
             <VBtn type="button" variant="tonal" @click="resetQuery">重置</VBtn>
           </div>
         </form>
-        <select v-model="statusCompatibilityValue" class="sr-only-input" name="status" aria-hidden="true" tabindex="-1" @change="syncStatus">
-          <option value="">全部状态</option>
-          <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.title }}</option>
-        </select>
-        <select v-model="stage" class="sr-only-input" name="stage" aria-hidden="true" tabindex="-1" @change="syncStage">
-          <option :value="undefined">全部阶段</option>
-          <option v-for="option in stageOptions" :key="option.value" :value="option.value">{{ option.title }}</option>
-        </select>
         <select v-model="ordering" class="sr-only-input" name="ordering" aria-hidden="true" tabindex="-1" @change="syncOrdering">
           <option v-for="option in orderingOptions" :key="option.value" :value="option.value">{{ option.title }}</option>
         </select>
@@ -383,7 +340,7 @@ onMounted(() => { void initializeAndLoad(); });
                 <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="positionsOf(application)[0].interviews.length"><span v-for="(interview, index) in positionsOf(application)[0].interviews" :key="interview.id ?? index" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </template>
             </td>
-            <td class="status-cell"><VChip v-if="positionsOf(application)[0]" size="small" :color="statusColor(positionsOf(application)[0])" variant="tonal">{{ displayStage(application.currentStage ?? positionsOf(application)[0].applicationStatus) }}</VChip></td>
+            <td class="status-cell"><VChip v-if="positionsOf(application)[0]" size="small" :color="statusColor(positionsOf(application)[0])" variant="tonal">{{ displayStatus(positionsOf(application)[0].applicationStatus) }}</VChip></td>
             <td class="shared-flow-cell">
               <div v-for="(stage, index) in sharedOf(application)" :key="stage.type" class="shared-stage">
                 <span class="shared-label">{{ SHARED_STAGES[index].title }}</span>
@@ -407,7 +364,7 @@ onMounted(() => { void initializeAndLoad(); });
                 <span v-if="position.notes" class="position-notes" :title="position.notes">备注：{{ position.notes }}</span>
                 <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="position.interviews.length"><span v-for="(interview, interviewIndex) in position.interviews" :key="interview.id ?? interviewIndex" class="interview-item"><span>{{ interview.name }}</span><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </td>
-              <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStage(position.applicationStatus) }}</VChip></td>
+              <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStatus(position.applicationStatus) }}</VChip></td>
               <td class="shared-flow-cell" aria-hidden="true"></td>
               <td class="updated-cell" aria-hidden="true"></td>
               <td class="actions-cell" aria-hidden="true"></td>

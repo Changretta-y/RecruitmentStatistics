@@ -109,7 +109,6 @@ function apiQuery(query: ApplicationQuery = {}): Record<string, string | number>
       : [normalized.applicationStatus];
     if (statuses.length > 0) params.application_status = statuses.join(",");
   }
-  if (normalized.stage) params.stage = normalized.stage;
   if (normalized.applicationTimeAfter) params.application_time_after = normalized.applicationTimeAfter;
   if (normalized.applicationTimeBefore) params.application_time_before = normalized.applicationTimeBefore;
   if (normalized.ordering) params.ordering = normalized.ordering;

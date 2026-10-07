@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import type { ApplicationPosition } from "../types/application";
+import { APPLICATION_STATUS_LABELS, type ApplicationPosition } from "../types/application";
 defineProps<{ position: ApplicationPosition }>();
-const statuses: Record<string, string> = { applied: "已投递", in_progress: "进行中", offer: "Offer", rejected: "已拒绝", withdrawn: "已撤回" };
 function displayTime(value: string | null): string {
   if (!value) return "未安排";
   const date = new Date(value);
@@ -17,7 +16,7 @@ function safeLink(value: string): string | undefined {
 
 <template>
   <article class="position-flow" :aria-label="`${position.positionName}投递记录`">
-    <header class="position-heading"><h3>{{ position.positionName }}</h3><span class="position-status">{{ statuses[position.applicationStatus] ?? position.applicationStatus }}</span></header>
+    <header class="position-heading"><h3>{{ position.positionName }}</h3><span class="position-status">{{ APPLICATION_STATUS_LABELS[position.applicationStatus] }}</span></header>
     <p class="position-meta">投递时间：{{ displayTime(position.applicationTime) }}</p>
     <a v-if="safeLink(position.applicationUrl)" :href="safeLink(position.applicationUrl)" target="_blank" rel="noopener noreferrer" class="position-link">查看投递链接</a>
     <p v-if="position.notes" class="position-notes">备注：{{ position.notes }}</p>

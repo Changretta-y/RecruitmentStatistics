@@ -14,7 +14,7 @@ const requestItem = (id: number, sender: PublicUser, recipient: PublicUser, stat
   ({ id, sender, recipient, status, created_at: date, responded_at: status === 'pending' ? null : date });
 const record = (owner: number, company = `用户${owner}专属公司`) => ({
   id: owner * 10, company_name: company, position_name: '测试工程师',
-  application_status: 'in_progress', current_stage: 'first_interview',
+  application_status: 'first_interview', current_stage: 'first_interview',
   application_url: `https://jobs.example.com/role/${owner}`, application_time: date,
   ai_interview_time: date, ai_interview_duration_minutes: 30,
   written_test_time: date, written_test_duration_minutes: 45,
@@ -270,6 +270,13 @@ test.describe('WEB-SHARE-001 public sharing page', () => {
     await records(page).getByRole('button', { name: /下一页/ }).click();
     await expect.poll(() => state.calls.some(c => c.path === '/sharing/users/201/applications/' && c.search.get('page') === '2')).toBe(true);
     expect(state.calls.filter(c => c.path === '/applications/' && c.search.has('user_id'))).toHaveLength(0);
+  });
+
+  test('shared records use the canonical status label once and remain read only', async ({ page }) => {
+    await openSharing(page); await pick(page);
+    await expect(records(page)).toContainText('一面');
+    await expect(records(page)).not.toContainText(/进行中|Offer|已撤回/);
+    await expect(records(page).getByRole('button', { name: /编辑|删除|修改/ })).toHaveCount(0);
   });
 
   test('switch clears former records immediately and late previous-user response cannot overwrite', async ({ page }) => {

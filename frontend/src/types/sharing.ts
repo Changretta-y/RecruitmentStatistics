@@ -1,3 +1,5 @@
+import type { ApplicationStatus } from "./application";
+
 export interface SharingUser {
   id: number;
   username: string;
@@ -21,8 +23,8 @@ export interface SharedApplication {
   company_name: string;
   position_name: string;
   application_url: string;
-  application_status: string;
-  current_stage: string;
+  application_status: ApplicationStatus;
+  current_stage: ApplicationStatus;
   application_time: string | null;
   created_at: string;
   updated_at: string;

@@ -5,11 +5,14 @@ from django.db import models
 
 class JobApplication(models.Model):
     class Status(models.TextChoices):
-        APPLIED = "applied", "已投递"
-        IN_PROGRESS = "in_progress", "流程中"
-        OFFER = "offer", "已录用"
-        REJECTED = "rejected", "已拒绝"
-        WITHDRAWN = "withdrawn", "已放弃"
+        APPLIED = "applied", "投递"
+        ASSESSMENT = "assessment", "测评"
+        WRITTEN_TEST = "written_test", "笔试"
+        FIRST_INTERVIEW = "first_interview", "一面"
+        SECOND_INTERVIEW = "second_interview", "二面"
+        OTHER_INTERVIEW = "other_interview", "其他轮次"
+        HR_INTERVIEW = "hr_interview", "HR面"
+        REJECTED = "rejected", "拒绝"
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -69,30 +72,8 @@ class JobApplication(models.Model):
 
     @property
     def current_stage(self) -> str:
-        if self.flow_version == 2:
-            stages = [(stage.scheduled_at, stage.type) for stage in self.shared_stages.all() if stage.scheduled_at]
-            for position in self.positions.all():
-                stages.extend((interview.scheduled_at, INTERVIEW_TYPES.get(interview.name, interview.name)) for interview in position.interviews.all() if interview.scheduled_at)
-            return max(stages, key=lambda stage: stage[0])[1] if stages else "applied"
-        if self.application_status in {
-            self.Status.OFFER,
-            self.Status.REJECTED,
-            self.Status.WITHDRAWN,
-        }:
-            return self.application_status
-
-        stages = (
-            ("hr_interview_time", "hr_interview"),
-            ("third_interview_time", "third_interview"),
-            ("second_interview_time", "second_interview"),
-            ("first_interview_time", "first_interview"),
-            ("written_test_time", "written_test"),
-            ("ai_interview_time", "ai_interview"),
-        )
-        for field_name, stage_name in stages:
-            if getattr(self, field_name) is not None:
-                return stage_name
-        return "applied"
+        """Return the read-only compatibility projection of application_status."""
+        return self.application_status
 
 
 SHARED_TYPES = ("ai_interview", "assessment", "written_test")

@@ -8,7 +8,7 @@ const shared = [
   { type: 'written_test', scheduled_at: '2026-10-01T02:00:00Z', duration_minutes: 60 },
 ];
 const position = (id: number, name: string) => ({
-  id, position_name: name, application_status: 'in_progress',
+  id, position_name: name, application_status: 'assessment',
   application_url: `https://jobs.example.invalid/${id}`, application_time: timestamp,
   notes: `${name}独立备注`,
   interviews: [
@@ -18,7 +18,7 @@ const position = (id: number, name: string) => ({
 });
 const company = () => ({
   company_name: '多岗位示例科技', positions: [position(902, '后端工程师'), position(903, '前端工程师')],
-  shared_stages: structuredClone(shared), current_stage: '技术面', created_at: timestamp, updated_at: timestamp,
+  shared_stages: structuredClone(shared), current_stage: 'assessment', created_at: timestamp, updated_at: timestamp,
   // APP-009 retains a flat compatibility projection; both shapes describe the same company.
   ...position(902, '后端工程师'), id: 901,
   ai_interview_time: timestamp, ai_interview_duration_minutes: 30,

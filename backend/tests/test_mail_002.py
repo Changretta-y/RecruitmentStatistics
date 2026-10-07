@@ -586,7 +586,8 @@ def _create_application(
     payload = {
         "company_name": company_name,
         "position_name": position_name,
-        "application_status": "in_progress",
+        # APP-010 canonical status; MAIL-002 assertions concern delivery behavior.
+        "application_status": "assessment",
         "application_time": _iso_at(timezone.localtime().date(), 7, 0),
         "ai_interview_time": None,
         "written_test_time": None,

@@ -86,6 +86,8 @@ class LegacyJobApplicationSerializer(serializers.ModelSerializer):
         )
 
     def to_internal_value(self, data):
+        if isinstance(data, dict) and 'current_stage' in data:
+            raise serializers.ValidationError({'current_stage': ['该字段不可写。']})
         blank_datetime_errors = {
             field: ["此时间字段不能是空字符串；请使用 ISO 8601 时间或 null。"]
             for field in self.date_time_fields

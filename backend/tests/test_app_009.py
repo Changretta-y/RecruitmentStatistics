@@ -124,7 +124,8 @@ def test_company_create_returns_multiple_independent_positions_and_shared_stages
     payload = _company_payload(
         positions=[
             _position("后端开发", status="applied"),
-            _position("数据工程师", status="in_progress"),
+            # APP-010 replaces the generic legacy in_progress fixture with an explicit canonical status.
+            _position("数据工程师", status="assessment"),
         ]
     )
 
@@ -139,7 +140,7 @@ def test_company_create_returns_multiple_independent_positions_and_shared_stages
     ]
     assert [position["application_status"] for position in body["positions"]] == [
         "applied",
-        "in_progress",
+        "assessment",
     ]
     assert len({position["id"] for position in body["positions"]}) == 2
     assert len(body["shared_stages"]) == 3
@@ -184,7 +185,7 @@ def test_patch_adds_position_without_removing_omitted_positions_and_updates_shar
                 {
                     "id": next(iter(original_ids)),
                     "position_name": "后端开发（更新）",
-                    "application_status": "in_progress",
+                    "application_status": "second_interview",
                     "application_time": "2026-10-01T09:00:00+08:00",
                     "notes": "岗位独立更新",
                 },
@@ -200,7 +201,7 @@ def test_patch_adds_position_without_removing_omitted_positions_and_updates_shar
     assert len(positions) == 3
     updated = positions[next(iter(original_ids))]
     assert updated["position_name"] == "后端开发（更新）"
-    assert updated["application_status"] == "in_progress"
+    assert updated["application_status"] == "second_interview"
     assert updated["notes"] == "岗位独立更新"
     stages = {item["type"]: item for item in body["shared_stages"]}
     assert set(stages) == set(SHARED_TYPES)
@@ -512,13 +513,15 @@ def test_duplicate_shared_types_update_once_and_clear_date_clears_duration(clien
     assert len(assessments) == 1
     assert assessments[0]["scheduled_at"].startswith("2026-10-11T01:00:00")
     assert assessments[0]["duration_minutes"] == 70
-    assert company["current_stage"] == "assessment"
+    # APP-010 current_stage is a read-only projection of the main position status,
+    # not a stage-date-derived value.
+    assert company["current_stage"] == company["positions"][0]["application_status"]
     cleared = _patch(client, owner, company["id"], {"shared_stages": [{"type": "assessment", "scheduled_at": None}]})
     assert cleared.status_code == 200
     assessment = next(item for item in _json(cleared)["shared_stages"] if item["type"] == "assessment")
     assert assessment["scheduled_at"] is None
     assert assessment["duration_minutes"] is None
-    assert _json(cleared)["current_stage"] == "applied"
+    assert _json(cleared)["current_stage"] == _json(cleared)["positions"][0]["application_status"]
 
 
 @pytest.mark.django_db
@@ -556,7 +559,8 @@ def test_nested_interview_patch_keeps_omitted_siblings_and_defaults_durations(cl
     position = company["positions"][0]
     first, second = position["interviews"]
     assert first["duration_minutes"] == 60
-    assert company["current_stage"] == "技术复试"
+    # The interview remains nested flow data; it no longer changes the business status projection.
+    assert company["current_stage"] == company["positions"][0]["application_status"]
     updated = _patch(client, owner, company["id"], {"positions": [{
         "id": position["id"],
         "interviews": [{"id": first["id"], "scheduled_at": "2026-10-14T01:00:00Z"}, {"name": "追加面试", "scheduled_at": None}],
@@ -566,7 +570,7 @@ def test_nested_interview_patch_keeps_omitted_siblings_and_defaults_durations(cl
     assert len(interviews) == 3
     assert interviews[second["id"]] == second
     assert interviews[first["id"]]["duration_minutes"] == 60
-    assert _json(updated)["current_stage"] == "first_interview"
+    assert _json(updated)["current_stage"] == _json(updated)["positions"][0]["application_status"]
 
 
 @pytest.mark.django_db
@@ -600,12 +604,13 @@ def test_rename_collision_and_foreign_nested_ids_do_not_change_either_company(cl
 
 @pytest.mark.django_db
 def test_search_status_filter_and_pagination_return_complete_company(client, owner):
-    response = _create(client, owner, _company_payload("岗位聚合公司", positions=[_position("后端"), _position("专属数据职位", status="offer")]))
+    # APP-010 maps the retired offer value to the canonical rejected status.
+    response = _create(client, owner, _company_payload("岗位聚合公司", positions=[_position("后端"), _position("专属数据职位", status="rejected")]))
     assert response.status_code == 201
     company = _json(response)
     other_response = _create(client, owner, _company_payload("其他公司"))
     assert other_response.status_code == 201
-    for query in ("search=专属数据", "search=聚合", "application_status=offer"):
+    for query in ("search=专属数据", "search=聚合", "application_status=rejected"):
         listing = client.get(f"{APPLICATIONS_URL}?{query}&page_size=10", **_headers(owner))
         assert listing.status_code == 200
         page = _json(listing)

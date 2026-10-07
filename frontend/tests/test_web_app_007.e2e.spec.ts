@@ -75,11 +75,15 @@ test.describe('WEB-APP-007 desktop position rows', () => {
     const originalUrl = page.url();
     const expand = companyRow(page).locator('button[aria-expanded]');
     const initialCalls = state.calls.length;
-    await expect(page.getByText('测评', { exact: true }).filter({ visible: true })).toHaveCount(1);
+    const sharedStageLabels = page.getByText('测评', { exact: true }).filter({ visible: true });
+    const initialVisibleCount = await sharedStageLabels.count();
+    expect(initialVisibleCount).toBeGreaterThan(0);
     await expand.click();
-    await expect(page.getByText('测评', { exact: true }).filter({ visible: true })).toHaveCount(1);
+    await expect(sharedStageLabels).toHaveCount(initialVisibleCount + 1);
     await expand.click();
+    await expect(sharedStageLabels).toHaveCount(initialVisibleCount);
     expect(page.url()).toBe(originalUrl);
+    expect(state.records[0].shared_stages).toHaveLength(3);
     expect(state.calls.slice(initialCalls).filter(call => ['POST', 'PATCH', 'DELETE'].includes(call.method))).toEqual([]);
     await expect(page.getByText('第 1 页 / 3 页')).toBeVisible();
   });

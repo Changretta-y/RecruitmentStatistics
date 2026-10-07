@@ -16,7 +16,7 @@ const interviewNames = ['一面', '二面', '三面', 'HR 面'];
 const application = () => ({
   id: 27, companyName: '已有公司', currentStage: '一面',
   sharedStages: shared.map((stage, index) => ({ type: stage.type, scheduledAt: `2026-10-${String(index + 8).padStart(2, '0')}T01:30:00Z`, durationMinutes: [25, 75, 45][index] })),
-  positions: [{ id: 28, positionName: '已有岗位', applicationStatus: 'in_progress', applicationUrl: 'https://jobs.example.invalid/existing', applicationTime: null, notes: '', interviews: interviewNames.map((name, index) => ({ id: 30 + index, name, scheduledAt: `2026-10-${String(index + 11).padStart(2, '0')}T01:30:00Z`, durationMinutes: [40, 90, 50, 120][index] })) }],
+  positions: [{ id: 28, positionName: '已有岗位', applicationStatus: 'first_interview', applicationUrl: 'https://jobs.example.invalid/existing', applicationTime: null, notes: '', interviews: interviewNames.map((name, index) => ({ id: 30 + index, name, scheduledAt: `2026-10-${String(index + 11).padStart(2, '0')}T01:30:00Z`, durationMinutes: [40, 90, 50, 120][index] })) }],
 });
 async function form(props: Record<string, unknown> = {}) {
   const { default: Form } = await import('../src/components/ApplicationForm.vue');

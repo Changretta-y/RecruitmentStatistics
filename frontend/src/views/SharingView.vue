@@ -5,6 +5,7 @@ import AppShell from "../components/AppShell.vue";
 import SharingAvatar from "../components/SharingAvatar.vue";
 import SharingUserRow from "../components/SharingUserRow.vue";
 import * as sharing from "../api/sharing";
+import { APPLICATION_STATUS_LABELS } from "../types/application";
 import type { SharedApplication, SharedApplicationPage, SharingConnection, SharingHistory, SharingRequest, SharingUser } from "../types/sharing";
 
 const me = ref<SharingUser | null>(null);
@@ -39,7 +40,6 @@ const stages = [
   { key: "first_interview", label: "一面" }, { key: "second_interview", label: "二面" },
   { key: "third_interview", label: "三面" }, { key: "hr_interview", label: "HR 面试" },
 ];
-const statusNames: Record<string, string> = { applied: "已投递", in_progress: "流程中", offer: "已录用", rejected: "已拒绝", withdrawn: "已放弃" };
 function statusOf(error: unknown): number | undefined { return (error as { response?: { status?: number } })?.response?.status; }
 function isBusy(key: string): boolean { return busy.value.has(key); }
 function setBusy(key: string, value: boolean): void { const next = new Set(busy.value); value ? next.add(key) : next.delete(key); busy.value = next; }
@@ -51,7 +51,6 @@ function displayTime(value: unknown): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 }
-function displayStage(value: string): string { return stages.find(stage => stage.key === value)?.label ?? statusNames[value] ?? value; }
 function duration(record: SharedApplication, key: string): string {
   const value = record[`${key}_duration_minutes`];
   return typeof value === "number" ? `${value} 分钟` : "—";
@@ -191,7 +190,7 @@ onBeforeUnmount(() => { mounted = false; ++recordsSequence; ++panelSequence; ++s
           <p v-if="loadingRecords" class="state" role="status">正在加载投递记录…</p>
           <div v-else-if="recordsError" class="state error" role="alert">{{ recordsError }}<button class="text-button" @click="loadRecords">重试</button></div>
           <p v-else-if="records && !records.results.length" class="state">{{ recordSearch ? '没有匹配的投递记录。' : '暂无投递记录。' }}</p>
-          <div v-else-if="records" class="record-list"><article v-for="record in records.results" :key="record.id" class="record-card"><header><div><h3>{{ record.company_name }}</h3><p>{{ record.position_name }}</p></div><span class="status-chip">{{ statusNames[record.application_status] ?? record.application_status }}</span></header><div class="record-meta"><span>当前阶段：{{ displayStage(record.current_stage) }}</span><span>投递时间：{{ displayTime(record.application_time) }}</span><a v-if="safeLink(record.application_url)" :href="safeLink(record.application_url)!" target="_blank" rel="noopener noreferrer">投递链接 ↗</a></div><dl class="stage-grid"><div v-for="stage in stages" :key="stage.key"><dt>{{ stage.label }}</dt><dd>{{ displayTime(record[`${stage.key}_time`]) }}</dd><dd>时长：{{ duration(record, stage.key) }}</dd></div></dl><footer>创建：{{ displayTime(record.created_at) }} · 更新：{{ displayTime(record.updated_at) }}</footer></article></div>
+          <div v-else-if="records" class="record-list"><article v-for="record in records.results" :key="record.id" class="record-card"><header><div><h3>{{ record.company_name }}</h3><p>{{ record.position_name }}</p></div><span class="status-chip">{{ APPLICATION_STATUS_LABELS[record.application_status] }}</span></header><div class="record-meta"><span>投递时间：{{ displayTime(record.application_time) }}</span><a v-if="safeLink(record.application_url)" :href="safeLink(record.application_url)!" target="_blank" rel="noopener noreferrer">投递链接 ↗</a></div><dl class="stage-grid"><div v-for="stage in stages" :key="stage.key"><dt>{{ stage.label }}</dt><dd>{{ displayTime(record[`${stage.key}_time`]) }}</dd><dd>时长：{{ duration(record, stage.key) }}</dd></div></dl><footer>创建：{{ displayTime(record.created_at) }} · 更新：{{ displayTime(record.updated_at) }}</footer></article></div>
           <nav v-if="records && !loadingRecords" class="record-pagination" aria-label="共享记录分页"><span>共 {{ records.count }} 条</span><button class="text-button" :disabled="page <= 1" @click="movePage(page - 1)">上一页</button><span>第 {{ page }} / {{ Math.max(1, records.total_pages) }} 页</span><button class="text-button" :disabled="page >= records.total_pages" @click="movePage(page + 1)">下一页</button></nav>
         </section>
       </div>

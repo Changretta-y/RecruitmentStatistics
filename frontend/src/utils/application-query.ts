@@ -65,14 +65,11 @@ export function parseApplicationQuery(query: QueryInput = {}): ApplicationQueryS
   const applicationStatus = applicationStatuses.length > 1
     ? applicationStatuses as ApplicationQueryState["applicationStatus"]
     : optionalString(applicationStatuses[0]) as ApplicationQueryState["applicationStatus"] | undefined;
-  const stage = optionalString(readValue(query, "stage")) as ApplicationQueryState["stage"] | undefined;
-
   return {
     page: parsePositiveInteger(readValue(query, "page"), DEFAULT_PAGE),
     pageSize: parsePageSize(readValue(query, "pageSize", ["page_size"])),
     search,
     ...(applicationStatus ? { applicationStatus } : {}),
-    ...(stage ? { stage } : {}),
     ...(optionalString(readValue(query, "applicationTimeAfter", ["application_time_after"]))
       ? { applicationTimeAfter: readValue(query, "applicationTimeAfter", ["application_time_after"]) }
       : {}),
@@ -97,7 +94,6 @@ export function serializeApplicationQuery(state: Partial<ApplicationQueryState> 
       : [normalized.applicationStatus];
     if (statuses.length > 0) result.applicationStatus = statuses.join(",");
   }
-  if (normalized.stage) result.stage = normalized.stage;
   if (normalized.applicationTimeAfter) result.applicationTimeAfter = normalized.applicationTimeAfter;
   if (normalized.applicationTimeBefore) result.applicationTimeBefore = normalized.applicationTimeBefore;
   if (normalized.ordering) result.ordering = normalized.ordering;

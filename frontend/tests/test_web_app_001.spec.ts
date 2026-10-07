@@ -60,7 +60,7 @@ const snakeApplication = {
   user: 3,
   company_name: "示例科技",
   position_name: "后端工程师",
-  application_status: "in_progress",
+  application_status: "first_interview",
   current_stage: "first_interview",
   application_time: "2026-09-20T02:00:00Z",
   ai_interview_time: null,
@@ -99,7 +99,7 @@ describe("WEB-APP-001 application API contract", () => {
 
     expect(application.companyName).toBe("示例科技");
     expect(application.positionName).toBe("后端工程师");
-    expect(application.applicationStatus).toBe("in_progress");
+    expect(application.applicationStatus).toBe("first_interview");
     expect(application.currentStage).toBe("first_interview");
     expect(application.applicationTime).toBe("2026-09-20T02:00:00Z");
     expect(application.aiInterviewTime).toBeNull();
@@ -117,8 +117,7 @@ describe("WEB-APP-001 application API contract", () => {
       page: 2,
       pageSize: 50,
       search: "腾讯",
-      applicationStatus: "in_progress",
-      stage: "first_interview",
+      applicationStatus: "first_interview",
       applicationTimeAfter: "2026-01-01T00:00:00+08:00",
       applicationTimeBefore: "2026-12-31T23:59:59+08:00",
       ordering: "-first_interview_time",
@@ -131,6 +130,7 @@ describe("WEB-APP-001 application API contract", () => {
     expect(requestText).toContain("application_time_before");
     expect(requestText).toContain("-first_interview_time");
     expect(requestText).toContain("腾讯");
+    expect(requestText).not.toContain('"stage"');
 
     transport.get.mockClear();
     await api.list({ page: 1, pageSize: 20, search: "", ordering: "-updated_at" });
@@ -177,8 +177,7 @@ describe("WEB-APP-001 application query state", () => {
       page: 2,
       pageSize: 50,
       search: "腾讯",
-      applicationStatus: "in_progress",
-      stage: "first_interview",
+      applicationStatus: "first_interview",
       applicationTimeAfter: "2026-01-01T00:00:00+08:00",
       applicationTimeBefore: "2026-12-31T23:59:59+08:00",
       ordering: "-first_interview_time",
@@ -204,7 +203,6 @@ describe("WEB-APP-001 application query state", () => {
       pageSize: 20,
       search: "",
       applicationStatus: undefined,
-      stage: undefined,
       applicationTimeAfter: undefined,
       applicationTimeBefore: undefined,
       ordering: "-updated_at",
