@@ -1,6 +1,6 @@
 # WEB-APP-009 项目 Logo 与网页图标
 
-- 状态：`READY_FOR_TEST`
+- 状态：`DONE`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：项目在浏览器标签页、侧栏和内部品牌区域使用统一的项目 Logo，形成一致识别。
 - 资源来源：用户本次附件 `codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png`；SHA-256 `9C0420FD9643705BD36A1C9E8E5C4D80B5FE100EA5B22492BB1301ABBA610403`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png` 读取后复制到项目资源目录。
@@ -43,3 +43,13 @@
 - 已实现：用户原图复制为 `frontend/public/logo.png`；`src/index.html` favicon 指向 `/logo.png`；AppShell 侧栏品牌使用带 alt 的图片；Vite `publicDir` 指向前端静态资源目录。
 - 自检：附件、public、dist 三处 SHA-256 一致；Logo Edge 专项 3/3、lint/build、staged diff check 通过。
 - 接收测试角色：release_tests；独立复测 Logo 字节、favicon、侧栏可访问图片和相邻登录/导航回归后提交 TEST_PASSED。
+
+## 2026-10-07 PM 验收结果
+
+- 状态：DONE。
+- 独立报告：`docs/test-reports/WEB-APP-009-passed.md`，提交 `d23505d`；实现提交 `634339e`；有效 RED `974817c`。
+- [x] 用户原图以 `frontend/public/logo.png` 保存，开发服务器和构建产物字节均匹配附件 SHA-256。
+- [x] `src/index.html` 与构建 HTML 的 favicon 均指向 `/logo.png`。
+- [x] AppShell 侧栏品牌区显示 Logo 图片和可访问替代文本，项目名称、登录和导航保持正常。
+- [x] Edge 专项 4/4、lint/build 通过；WEB-APP-008 未提交改动保持不变。
+- 结论：任务契约全部满足，项目管理 Agent 设置 DONE。
