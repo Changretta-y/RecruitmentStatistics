@@ -14,7 +14,7 @@ import { VSelect } from "vuetify/components/VSelect";
 import { VTable } from "vuetify/components/VTable";
 import { VTextField } from "vuetify/components/VTextField";
 
-import { delete as deleteRequest, list } from "../api/applications";
+import { delete as deleteRequest, list, listApplicationSuggestionPage } from "../api/applications";
 import DateTimeField from "../components/DateTimeField.vue";
 import { readPositions, readSharedStages, SHARED_STAGES } from "../utils/company-application";
 import AppShell from "../components/AppShell.vue";
@@ -70,6 +70,14 @@ const deleteLoading = ref(false);
 const deleteError = ref("");
 const successMessage = ref("");
 const expandedCompanies = ref(new Set<number>());
+const suggestionsOpen = ref(false);
+const suggestionLoading = ref(false);
+const suggestionError = ref<"unauthorized" | "network" | null>(null);
+const companySuggestions = ref<string[]>([]);
+const suggestionsOwnerKey = ref<string | null>(null);
+const suggestionRequestSequence = ref(0);
+const pageInput = ref("1");
+const pageValidationError = ref("");
 
 function positionsOf(application: JobApplication) { return readPositions(application as unknown as Record<string, unknown>); }
 function sharedOf(application: JobApplication) { return readSharedStages(application as unknown as Record<string, unknown>); }
@@ -85,6 +93,11 @@ const hasPrevious = computed(() => Boolean(data.value.previous) || page.value > 
 const hasActiveFilters = computed(() => Boolean(
   search.value || applicationStatus.value.length || applicationTimeAfter.value || applicationTimeBefore.value,
 ));
+const pageOptions = computed(() => Array.from({ length: data.value.totalPages }, (_value, index) => index + 1));
+const filteredCompanySuggestions = computed(() => {
+  const filter = search.value.trim().toLocaleLowerCase();
+  return companySuggestions.value.filter((company) => !filter || company.toLocaleLowerCase().includes(filter));
+});
 const deleteDialogOpen = computed({
   get: () => Boolean(confirmApplication.value),
   set: (value: boolean) => { if (!value) closeDeleteDialog(); },
@@ -97,13 +110,15 @@ function openEdit(application: JobApplication): void {
 
 function applyQuery(state: ApplicationQueryState): void {
   page.value = state.page;
+  pageInput.value = String(state.page);
+  pageValidationError.value = "";
   pageSize.value = state.pageSize;
   search.value = state.search;
   applicationStatus.value = Array.isArray(state.applicationStatus)
     ? [...state.applicationStatus]
     : state.applicationStatus ? [state.applicationStatus] : [];
-  applicationTimeAfter.value = toDateTimeLocal(state.applicationTimeAfter ?? "");
-  applicationTimeBefore.value = toDateTimeLocal(state.applicationTimeBefore ?? "");
+  applicationTimeAfter.value = toDateTimeFilterValue(state.applicationTimeAfter ?? "");
+  applicationTimeBefore.value = toDateTimeFilterValue(state.applicationTimeBefore ?? "");
   ordering.value = state.ordering;
 }
 
@@ -122,8 +137,12 @@ async function changeStatus(value: ApplicationStatus[] | null | undefined): Prom
   applicationStatus.value = Array.isArray(value) ? value : [];
   await updateUrlAndLoad({ ...currentQuery(), page: 1 });
 }
+async function changeOrdering(value: string | null | undefined): Promise<void> {
+  ordering.value = value || DEFAULT_ORDERING;
+  await updateUrlAndLoad({ ...currentQuery(), page: 1 });
+}
 function syncOrdering(event: Event): void {
-  ordering.value = (event.target as HTMLSelectElement).value || DEFAULT_ORDERING;
+  void changeOrdering((event.target as HTMLSelectElement).value || DEFAULT_ORDERING);
 }
 
 async function loadApplications(query: ApplicationQueryState = currentQuery()): Promise<void> {
@@ -135,6 +154,16 @@ async function loadApplications(query: ApplicationQueryState = currentQuery()): 
     if (sequence !== requestSequence.value) return;
     data.value = result;
     loaded.value = true;
+    const normalizedPage = result.totalPages > 0 ? result.totalPages : 1;
+    if (query.page !== normalizedPage && (result.totalPages === 0 || query.page > result.totalPages)) {
+      const normalized = { ...query, page: normalizedPage };
+      applyQuery(normalized);
+      const location = { path: "/applications", query: serializeApplicationQuery(normalized) };
+      internalRoutePaths.add(router.resolve(location).fullPath);
+      await router.push(location);
+      void loadApplications(normalized);
+      return;
+    }
   } catch (error: unknown) {
     if (sequence !== requestSequence.value) return;
     loaded.value = true;
@@ -152,16 +181,122 @@ async function updateUrlAndLoad(next: ApplicationQueryState): Promise<void> {
   void loadApplications(next);
   await router.push(location);
 }
-async function submitQuery(): Promise<void> { await updateUrlAndLoad({ ...currentQuery(), page: 1 }); }
+async function submitQuery(): Promise<void> {
+  suggestionsOpen.value = false;
+  await updateUrlAndLoad({ ...currentQuery(), page: 1 });
+}
 async function resetQuery(): Promise<void> {
+  suggestionsOpen.value = false;
   await updateUrlAndLoad({ page: 1, pageSize: 20, search: "", ordering: DEFAULT_ORDERING });
 }
 async function changePageSize(): Promise<void> { await updateUrlAndLoad({ ...currentQuery(), page: 1 }); }
 async function goToPage(nextPage: number): Promise<void> {
   if (nextPage < 1 || (nextPage > 1 && data.value.totalPages > 0 && nextPage > data.value.totalPages)) return;
+  pageValidationError.value = "";
   await updateUrlAndLoad({ ...currentQuery(), page: nextPage });
 }
 async function retry(): Promise<void> { await loadApplications(currentQuery()); }
+
+function authUserKey(): string | null {
+  const user = auth.user;
+  if (!user || typeof user !== "object") return null;
+  const record = user as Record<string, unknown>;
+  const identity = record.id ?? record.username ?? record.email;
+  return identity === undefined || identity === null ? null : String(identity);
+}
+
+function normalizedCompanyName(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function deduplicateCompanyNames(applications: JobApplication[]): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const application of applications) {
+    const name = normalizedCompanyName(application.companyName);
+    const key = name.toLocaleLowerCase();
+    if (name && !seen.has(key)) {
+      seen.add(key);
+      names.push(name);
+    }
+  }
+  return names;
+}
+
+async function loadCompanySuggestions(): Promise<void> {
+  const ownerKey = authUserKey();
+  if (!ownerKey) {
+    companySuggestions.value = [];
+    suggestionsOwnerKey.value = null;
+    suggestionError.value = null;
+    return;
+  }
+
+  const sequence = ++suggestionRequestSequence.value;
+  suggestionLoading.value = true;
+  suggestionError.value = null;
+  try {
+    const firstPage = await listApplicationSuggestionPage(1);
+    const applications = [...firstPage.results];
+    for (let pageNumber = 2; pageNumber <= firstPage.totalPages; pageNumber += 1) {
+      const nextPage = await listApplicationSuggestionPage(pageNumber);
+      applications.push(...nextPage.results);
+    }
+    if (sequence !== suggestionRequestSequence.value || ownerKey !== authUserKey()) return;
+    companySuggestions.value = deduplicateCompanyNames(applications);
+    suggestionsOwnerKey.value = ownerKey;
+  } catch (error: unknown) {
+    if (sequence !== suggestionRequestSequence.value) return;
+    companySuggestions.value = [];
+    suggestionsOwnerKey.value = null;
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    suggestionError.value = status === 401 ? "unauthorized" : "network";
+  } finally {
+    if (sequence === suggestionRequestSequence.value) suggestionLoading.value = false;
+  }
+}
+
+async function openCompanySuggestions(): Promise<void> {
+  suggestionsOpen.value = true;
+  const ownerKey = authUserKey();
+  if (ownerKey && suggestionsOwnerKey.value === ownerKey && !suggestionError.value) return;
+  await loadCompanySuggestions();
+}
+
+function retryCompanySuggestions(): void {
+  suggestionsOwnerKey.value = null;
+  suggestionError.value = null;
+  void loadCompanySuggestions();
+}
+
+async function selectCompanySuggestion(company: string): Promise<void> {
+  search.value = company;
+  suggestionsOpen.value = false;
+  await submitQuery();
+}
+
+function clearPageValidation(): void {
+  pageValidationError.value = "";
+}
+
+function submitPageInput(): void {
+  const raw = String(pageInput.value ?? "").trim();
+  const parsed = Number(raw);
+  if (!/^\d+$/.test(raw) || !Number.isSafeInteger(parsed) || parsed < 1) {
+    pageValidationError.value = "请输入合法页码。";
+    return;
+  }
+  if (data.value.totalPages === 0 || parsed > data.value.totalPages) {
+    pageValidationError.value = "页码超出有效范围。";
+    return;
+  }
+  void goToPage(parsed);
+}
+
+function selectPageFromEvent(event: Event): void {
+  const selected = Number((event.target as HTMLSelectElement).value);
+  if (Number.isSafeInteger(selected) && selected >= 1) void goToPage(selected);
+}
 
 function openDeleteDialog(application: JobApplication): void {
   confirmApplication.value = application;
@@ -218,6 +353,9 @@ function toDateTimeLocal(value: string): string {
   const pad = (part: number) => String(part).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
+function toDateTimeFilterValue(value: string): string {
+  return /[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : toDateTimeLocal(value);
+}
 function toIsoDateTime(value: string): string {
   if (!value) return "";
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return `${value}T00:00:00`;
@@ -228,6 +366,15 @@ function toIsoDateTime(value: string): string {
 function displayTime(value: string | null): string {
   return value ? toDateTimeLocal(value).slice(0, 10) : "—";
 }
+
+watch(authUserKey, (nextKey, previousKey) => {
+  if (nextKey === previousKey) return;
+  suggestionRequestSequence.value += 1;
+  companySuggestions.value = [];
+  suggestionsOwnerKey.value = null;
+  suggestionError.value = null;
+  suggestionsOpen.value = false;
+});
 
 watch(() => route.fullPath, () => {
   const next = parseApplicationQuery(route.query as Record<string, unknown>);
@@ -260,11 +407,46 @@ onMounted(() => { void initializeAndLoad(); });
     <VCard class="query-card mb-6" elevation="1">
       <VCardText>
         <form aria-label="投递查询" class="query-grid" @submit.prevent="submitQuery">
-          <VTextField v-model="search" name="search" label="关键字" placeholder="搜索公司或岗位" prepend-inner-icon="mdi-magnify" @keyup.enter.prevent="submitQuery" />
+          <div class="search-suggestion-field">
+            <VTextField
+              v-model="search"
+              name="search"
+              label="关键字"
+              placeholder="搜索公司或岗位"
+              prepend-inner-icon="mdi-magnify"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-controls="company-suggestions"
+              :aria-expanded="suggestionsOpen"
+              @focus="openCompanySuggestions"
+              @click="openCompanySuggestions"
+              @keyup.enter.prevent="submitQuery"
+              @keyup.esc="suggestionsOpen = false"
+            />
+            <div v-if="suggestionsOpen" id="company-suggestions" class="suggestions-panel" role="listbox" aria-label="历史公司建议">
+              <div v-if="suggestionLoading" class="suggestion-state" role="status">正在加载历史公司…</div>
+              <div v-else-if="suggestionError" class="suggestion-state suggestion-error" role="alert">
+                <span>{{ suggestionError === "unauthorized" ? "登录状态已失效，无法加载历史公司建议。" : "历史公司建议加载失败。" }}</span>
+                <button type="button" class="suggestion-retry" @click="retryCompanySuggestions">重试</button>
+              </div>
+              <div v-else-if="filteredCompanySuggestions.length === 0" class="suggestion-state">没有匹配的历史公司</div>
+              <template v-else>
+                <button
+                  v-for="company in filteredCompanySuggestions"
+                  :key="company"
+                  type="button"
+                  role="option"
+                  :aria-label="company"
+                  class="suggestion-option"
+                  @click="selectCompanySuggestion(company)"
+                >{{ company }}</button>
+              </template>
+            </div>
+          </div>
           <VSelect v-model="applicationStatus" name="status" label="投递状态（可多选）" :items="statusOptions" item-title="title" item-value="value" multiple chips closable-chips clearable @update:model-value="changeStatus" />
           <DateTimeField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" clearable />
           <DateTimeField v-model="applicationTimeBefore" name="applicationTimeBefore" label="投递时间止" clearable />
-          <VSelect v-model="ordering" label="排序" :items="orderingOptions" item-title="title" item-value="value" />
+          <VSelect v-model="ordering" label="排序" :items="orderingOptions" item-title="title" item-value="value" @update:model-value="changeOrdering" />
           <VSelect v-model.number="pageSize" name="pageSize" label="每页" :items="APPLICATION_PAGE_SIZES" @update:model-value="changePageSize" />
           <div class="query-actions">
             <VBtn type="submit" color="primary" prepend-icon="mdi-magnify" @click.prevent="submitQuery">查询</VBtn>
@@ -377,8 +559,30 @@ onMounted(() => { void initializeAndLoad(); });
     <nav v-if="loaded && !errorKind" class="pagination-bar mt-5" aria-label="分页">
       <span class="text-body-2 text-medium-emphasis">共 {{ data.count }} 条</span>
       <VBtn variant="tonal" size="small" :disabled="!hasPrevious" aria-label="上一页" @click="goToPage(page - 1)">上一页</VBtn>
+      <label class="page-control">
+        <span>页码</span>
+        <select aria-label="页码" :value="page" :disabled="data.totalPages === 0" @change="selectPageFromEvent">
+          <option v-for="pageOption in pageOptions" :key="pageOption" :value="pageOption">{{ pageOption }}</option>
+        </select>
+      </label>
       <span class="page-indicator">第 {{ page }} 页 / {{ Math.max(data.totalPages, 1) }} 页</span>
+      <label class="page-control">
+        <span>跳转页码</span>
+        <input
+          v-model="pageInput"
+          type="number"
+          inputmode="numeric"
+          min="1"
+          :max="data.totalPages || undefined"
+          aria-label="页码输入"
+          :disabled="data.totalPages === 0"
+          @input="clearPageValidation"
+          @keydown.enter.prevent="submitPageInput"
+        />
+      </label>
+      <VBtn variant="tonal" size="small" :disabled="data.totalPages === 0" @click="submitPageInput">跳转</VBtn>
       <VBtn variant="tonal" size="small" :disabled="!hasNext" aria-label="下一页" @click="goToPage(page + 1)">下一页</VBtn>
+      <span v-if="pageValidationError" class="page-validation-error" role="alert">{{ pageValidationError }}</span>
     </nav>
 
     <VDialog v-model="deleteDialogOpen" max-width="460" aria-labelledby="delete-dialog-title">
@@ -412,6 +616,13 @@ onMounted(() => { void initializeAndLoad(); });
 .query-card { border: 1px solid rgba(49, 87, 213, .1); }
 .query-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 16px; }
 .query-actions { display: flex; align-items: center; gap: 10px; min-height: 56px; }
+.search-suggestion-field { position: relative; min-width: 0; }
+.suggestions-panel { position: absolute; z-index: 10; top: calc(100% - 8px); right: 0; left: 0; overflow: auto; max-height: 280px; border: 1px solid #dce3f2; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .14); }
+.suggestion-option { display: block; width: 100%; padding: 10px 14px; border: 0; background: transparent; color: #24375c; text-align: left; cursor: pointer; }
+.suggestion-option:hover, .suggestion-option:focus-visible { background: #eef3ff; outline: none; }
+.suggestion-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; color: #667085; font-size: .875rem; }
+.suggestion-error { color: #b42318; }
+.suggestion-retry { border: 0; background: transparent; color: #3157d5; cursor: pointer; font-weight: 600; }
 .table-card { overflow: hidden; }
 .applications-table :deep(table) { width: 100%; min-width: 980px; table-layout: fixed; }
 .applications-table :deep(th) { background: #f8faff; font-size: .78rem; white-space: nowrap; }
@@ -443,6 +654,10 @@ onMounted(() => { void initializeAndLoad(); });
 .state-content { min-height: 250px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .pagination-bar { display: flex; align-items: center; justify-content: center; gap: 14px; }
 .page-indicator { min-width: 120px; text-align: center; }
+.page-control { display: inline-flex; align-items: center; gap: 6px; color: #475467; font-size: .875rem; }
+.page-control select, .page-control input { min-height: 36px; border: 1px solid #cfd7e6; border-radius: 6px; padding: 0 8px; background: #fff; color: #182230; }
+.page-control input { width: 76px; }
+.page-validation-error { flex-basis: 100%; color: #b42318; font-size: .875rem; text-align: center; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; }
 @media (max-width: 1100px) { .query-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 680px) {

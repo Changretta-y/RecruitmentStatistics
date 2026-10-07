@@ -137,7 +137,42 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
         if application_time_before is not None:
             queryset = queryset.filter(Q(application_time__lte=application_time_before) | Q(positions__application_time__lte=application_time_before))
 
-        return queryset.distinct().order_by(*self._ordering(params.get("ordering")))
+        queryset = queryset.distinct()
+        raw_ordering = params.get("ordering")
+        if self._uses_default_ordering(raw_ordering):
+            applications = list(queryset)
+            applications.sort(key=self._default_order_key)
+            return applications
+        return queryset.order_by(*self._ordering(raw_ordering))
+
+    @staticmethod
+    def _uses_default_ordering(raw_ordering):
+        return raw_ordering is None or raw_ordering == "-updated_at"
+
+    @staticmethod
+    def _is_rejected_company(company):
+        positions = list(company.positions.all())
+        if positions:
+            shared_stages = list(company.shared_stages.all())
+            return all(
+                current_stage_for_position(position, shared_stages=shared_stages)
+                == JobApplication.Status.REJECTED
+                for position in positions
+            )
+
+        return (
+            getattr(company, "current_stage", None) or company.application_status
+        ) == JobApplication.Status.REJECTED
+
+    @classmethod
+    def _default_order_key(cls, company):
+        updated_at = company.updated_at
+        updated_timestamp = updated_at.timestamp() if updated_at is not None else float("-inf")
+        return (
+            1 if cls._is_rejected_company(company) else 0,
+            -updated_timestamp,
+            -company.pk,
+        )
 
     @staticmethod
     def _validation_error(field, message):

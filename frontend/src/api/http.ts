@@ -20,6 +20,11 @@ const axiosDefaults = API_BASE_URL ? { baseURL: API_BASE_URL } : undefined;
 
 type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _authRetry?: boolean;
+  _skipAuthRefresh?: boolean;
+};
+
+export type AuthRequestConfig = AxiosRequestConfig & {
+  _skipAuthRefresh?: boolean;
 };
 
 export const publicClient: AxiosInstance = axios.create(axiosDefaults);
@@ -98,6 +103,7 @@ authClient.interceptors.response.use(
     if (
       status !== 401 ||
       !config ||
+      config._skipAuthRefresh ||
       isRefreshRequest(config) ||
       config._authRetry
     ) {

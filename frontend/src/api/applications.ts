@@ -1,4 +1,4 @@
-import { apiClient } from "./http";
+import { apiClient, type AuthRequestConfig } from "./http";
 import {
   type ApplicationPage,
   type ApplicationQuery,
@@ -117,6 +117,14 @@ function apiQuery(query: ApplicationQuery = {}): Record<string, string | number>
 
 export async function listApplications(query: ApplicationQuery = {}): Promise<ApplicationPage> {
   const response = await apiClient.get("/api/v1/applications/", { params: apiQuery(query) });
+  return mapPage(response.data as Record<string, unknown>);
+}
+
+export async function listApplicationSuggestionPage(page: number): Promise<ApplicationPage> {
+  const response = await apiClient.get("/api/v1/applications/", {
+    params: { page, page_size: 100 },
+    _skipAuthRefresh: true,
+  } as AuthRequestConfig);
   return mapPage(response.data as Record<string, unknown>);
 }
 
