@@ -1,5 +1,6 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
 import { createHash } from 'node:crypto';
+import { resolve } from 'node:path';
 
 const USER = { id: 909, username: 'web_app_009', email: 'logo@example.invalid' };
 const PROVIDED_LOGO_SHA256 = '9c0420fd9643705bd36a1c9e8e5c4d80b5fe100ea5b22492bb1301abba610403';
@@ -19,6 +20,9 @@ async function syntheticLogin(page: Page) {
     if (path.endsWith('/applications/') && route.request().method() === 'GET') {
       return json(route, 200, { count: 0, page: 1, page_size: 20, total_pages: 1, results: [] });
     }
+    if (path.endsWith('/calendar/events/') && route.request().method() === 'GET') {
+      return json(route, 200, { timezone: 'Asia/Shanghai', start: '2026-09-28', end: '2026-11-02', events: [] });
+    }
     return json(route, 404, { code: 'NOT_FOUND' });
   });
   await page.goto('/login');
@@ -31,6 +35,15 @@ async function syntheticLogin(page: Page) {
 test.describe('WEB-APP-009 public project logo', () => {
   test('authenticated shell and project title remain available', async ({ page }) => {
     await syntheticLogin(page);
+    await expect(page.getByText('我的投递进度', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+  });
+
+  test('login and shared navigation still open calendar and return to applications', async ({ page }) => {
+    await syntheticLogin(page);
+    await page.locator('a[href="/calendar"]').first().click();
+    await expect(page).toHaveURL(/\/calendar(?:[/?#]|$)/);
+    await page.locator('a[href="/applications"]').first().click();
+    await expect(page).toHaveURL(/\/applications(?:[/?#]|$)/);
     await expect(page.getByText('我的投递进度', { exact: true }).filter({ visible: true }).first()).toBeVisible();
   });
 
@@ -78,5 +91,6 @@ test.describe('WEB-APP-009 public project logo', () => {
     expect(response.status()).toBe(200);
     expect(response.headers()['content-type']).toMatch(/^image\//);
     expect(sha256(await response.body()), 'sidebar uses the user-provided image bytes').toBe(PROVIDED_LOGO_SHA256);
+    await page.screenshot({ path: resolve(process.cwd(), '../docs/test-reports/WEB-APP-009-brand.png'), fullPage: false });
   });
 });
