@@ -1,6 +1,6 @@
 # WEB-APP-010 替换项目 Logo 资源
 
-- 状态：`READY_FOR_TEST`
+- 状态：`DONE`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：将项目当前品牌图片替换为用户最新提供的 Logo，网页和内部品牌区域保持统一。
 - 资源来源：用户附件 `codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png`；SHA-256 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png` 读取。
@@ -39,3 +39,12 @@
 - 用户附件、`frontend/public/logo.png` 和构建产物 `dist/logo.png` SHA-256 均为 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。
 - Logo Edge 专项 3/3、lint/build、staged diff check 通过；favicon/AppShell 路径和结构未修改。
 - 接收测试角色：release_tests，独立复测新 Logo 字节、favicon、侧栏与导航回归后提交 TEST_PASSED。
+
+## 2026-10-07 PM 验收结果
+
+- 状态：DONE。
+- 独立报告：`docs/test-reports/WEB-APP-010-passed.md`，提交 `5898e03`；实现提交 `15b1f2e`；有效 RED `17083c6`。
+- [x] 用户新附件、`frontend/public/logo.png` 和 `dist/logo.png` SHA-256 均为 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。
+- [x] favicon 和 AppShell 继续使用 `/logo.png`，页面 alt、项目名称、登录、日历和投递列表导航正常。
+- [x] Edge 3/3、lint/build 通过；既有 APP-010 测试和 WEB-APP-008 未提交改动未修改。
+- 结论：任务契约全部满足，项目管理 Agent 设置 DONE。
