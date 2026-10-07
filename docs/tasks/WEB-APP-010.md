@@ -1,6 +1,6 @@
 # WEB-APP-010 替换项目 Logo 资源
 
-- 状态：`TEST_WRITING`
+- 状态：`IMPLEMENTING`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：将项目当前品牌图片替换为用户最新提供的 Logo，网页和内部品牌区域保持统一。
 - 资源来源：用户附件 `codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png`；SHA-256 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png` 读取。
@@ -25,3 +25,10 @@
 
 - 测试先依据当前旧资源确认稳定 RED，再交实现角色。
 - 实现角色只替换资源并写实现说明，不修改测试或无关 WEB-APP-008 改动。
+
+## 2026-10-07 RED 与实现交接
+
+- 测试先行提交：`17083c6`；报告：`docs/test-reports/WEB-APP-010-red.md`。
+- Edge 连续两次为 1/3 通过、0 flaky；登录/导航基线通过，本地 favicon 与侧栏 `/logo.png` 均稳定返回旧 Logo SHA，不匹配新附件 SHA。
+- 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 接收实现角色：company_implementation；只替换 `frontend/public/logo.png` 原始字节并写实现说明，保留 favicon 路径、AppShell 结构、既有 APP-010 测试和 WEB-APP-008 未提交改动。
