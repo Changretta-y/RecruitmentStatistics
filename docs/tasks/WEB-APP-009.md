@@ -1,6 +1,6 @@
 # WEB-APP-009 项目 Logo 与网页图标
 
-- 状态：`TEST_WRITING`
+- 状态：`IMPLEMENTING`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：项目在浏览器标签页、侧栏和内部品牌区域使用统一的项目 Logo，形成一致识别。
 - 资源来源：用户本次附件 `codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png`；SHA-256 `9C0420FD9643705BD36A1C9E8E5C4D80B5FE100EA5B22492BB1301ABBA610403`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png` 读取后复制到项目资源目录。
@@ -28,3 +28,11 @@
 - 测试角色先通过公开文件、DOM 和构建行为确认 RED，再交实现角色。
 - 实现角色不得修改测试；测试角色不得读取生产实现目录。
 - 不覆盖工作区中与本任务无关的 WEB-APP-008 未提交改动。
+
+## 2026-10-07 RED 与实现交接
+
+- 测试先行提交：`974817c`；报告：`docs/test-reports/WEB-APP-009-red.md`。
+- Edge 桌面套件连续两次为 1/3 通过、0 flaky；登录和项目标题基线通过，favicon 有效链接与侧栏 Logo 图片两项稳定缺失。
+- 测试使用用户附件 SHA-256 校验未来 favicon 与侧栏 Logo 的实际响应字节，避免替换为其他图片。
+- 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 接收实现角色：company_implementation；可写 `frontend/src/`、`frontend/public/`、`frontend/src/index.html` 和 `docs/implementation-notes/WEB-APP-009.md`，测试目录只读；保留 WEB-APP-008 未提交改动。
