@@ -4,9 +4,12 @@ import { VAlert } from "vuetify/components/VAlert";
 import { VBtn } from "vuetify/components/VBtn";
 import { VCard, VCardActions, VCardText, VCardTitle } from "vuetify/components/VCard";
 import { VSelect } from "vuetify/components/VSelect";
+import { VAutocomplete } from "vuetify/components/VAutocomplete";
 import { VTextarea } from "vuetify/components/VTextarea";
 import { VTextField } from "vuetify/components/VTextField";
 import { create, update, deleteInterview, deletePosition } from "../api/applications";
+import { createCompany, getCompany, listCompanies, updateCompany } from "../api/companies";
+import { useRoute } from "vue-router";
 import { APPLICATION_STATUS_OPTIONS, type ApplicationStatus, type JobApplication, type SharedStageType } from "../types/application";
 import { applicationValue, readPositions, readSharedStages, SHARED_STAGES } from "../utils/company-application";
 
@@ -21,19 +24,25 @@ const emit = defineEmits<{
 interface ScheduleDraft { scheduledAt: string | null; durationMinutes: string | null; }
 interface InterviewDraft extends ScheduleDraft { key: number; id?: number; name: string; }
 interface PositionDraft {
-  key: number; id?: number; positionName: string; applicationUrl: string;
+  key: number; id?: number; positionName: string; applicationUrl?: string | null;
   applicationStatus: ApplicationStatus; applicationTime: string | null; notes: string; interviews: InterviewDraft[];
 }
 interface SharedDraft extends ScheduleDraft { type: SharedStageType; }
 let keySequence = 0;
 const statuses = APPLICATION_STATUS_OPTIONS;
 function emptyPosition(): PositionDraft {
-  return { key: ++keySequence, positionName: "", applicationUrl: "", applicationStatus: "applied", applicationTime: null, notes: "", interviews: [] };
+  return { key: ++keySequence, positionName: "", applicationStatus: "applied", applicationTime: null, notes: "", interviews: [] };
 }
 function emptyShared(): SharedDraft[] {
   return SHARED_STAGES.map(stage => ({ type: stage.type, scheduledAt: null, durationMinutes: null }));
 }
-const form = reactive({ companyName: "", sharedStages: emptyShared(), positions: [emptyPosition()] });
+const route = useRoute();
+const form = reactive({ companyId: null as number | null, companyName: "", recruitmentUrl: null as string | null, companySearch: "", sharedStages: emptyShared(), positions: [emptyPosition()] });
+const companyOptions = ref<Array<{ id: number; companyName: string; recruitmentUrl: string | null }>>([]);
+const companyLoading = ref(false);
+const companyCreateOpen = ref(false);
+const companyCreateUrl = ref("");
+const companyError = ref("");
 const fieldErrors = reactive<Record<string, string>>({});
 const generalError = ref("");
 const isSubmitting = ref(false);
@@ -47,6 +56,7 @@ let lastResponse: unknown;
 let submittedPositionIndexes: number[] = [];
 let submittedSharedIndexes: number[] = [];
 const submittedInterviewIndexes = new Map<number, number[]>();
+const originalRecruitmentUrl = ref<string | null>(null);
 
 function timeToInput(value: string | null): string | null {
   if (!value) return null;
@@ -65,11 +75,11 @@ function schedulePayload(value: ScheduleDraft) {
 }
 function requestPayload(): Record<string, unknown> {
   return {
-    companyName: form.companyName.trim(),
+    ...(form.companyId ? { companyId: form.companyId } : { companyName: (form.companyName || form.companySearch).trim() }),
     sharedStages: form.sharedStages.map(stage => ({ type: stage.type, ...schedulePayload(stage) })),
     positions: form.positions.map(position => ({
       ...(position.id !== undefined ? { id: position.id } : {}),
-      positionName: position.positionName.trim(), applicationUrl: position.applicationUrl.trim(),
+      positionName: position.positionName.trim(),
       applicationStatus: position.applicationStatus, applicationTime: timeToRequest(position.applicationTime), notes: position.notes,
       interviews: position.interviews.map(interview => ({
         ...(interview.id !== undefined ? { id: interview.id } : {}), name: interview.name.trim(), ...schedulePayload(interview),
@@ -82,7 +92,6 @@ function snapshot(): void { savedPayload.value = JSON.parse(JSON.stringify(reque
 function editPayload(): Record<string, unknown> {
   const current = requestPayload();
   const changed: Record<string, unknown> = {};
-  if (current.companyName !== savedPayload.value.companyName) changed.companyName = current.companyName;
   const oldStages = savedPayload.value.sharedStages as Record<string, unknown>[] ?? [];
   submittedSharedIndexes = [];
   const stages = (current.sharedStages as Record<string, unknown>[]).filter((stage, index) => {
@@ -120,11 +129,16 @@ function editPayload(): Record<string, unknown> {
   return changed;
 }
 const hasPendingDeletes = computed(() => pendingPositions.value.length > 0 || pendingInterviews.value.length > 0);
-const isDirty = computed(() => JSON.stringify(requestPayload()) !== JSON.stringify(savedPayload.value) || hasPendingDeletes.value);
+const isDirty = computed(() => JSON.stringify(requestPayload()) !== JSON.stringify(savedPayload.value) || form.recruitmentUrl !== originalRecruitmentUrl.value || hasPendingDeletes.value);
 function clearErrors(): void { Object.keys(fieldErrors).forEach(key => delete fieldErrors[key]); generalError.value = ""; }
 function load(): void {
   const source = (props.application ?? {}) as Record<string, unknown>;
   form.companyName = String(applicationValue(source, "companyName") ?? "");
+  const rawCompanyId = applicationValue(source, "companyId");
+  form.companyId = typeof rawCompanyId === "number" && rawCompanyId > 0 ? rawCompanyId : null;
+  form.recruitmentUrl = (applicationValue(source, "recruitmentUrl") as string | null | undefined) ?? null;
+  form.companySearch = form.companyName;
+  originalRecruitmentUrl.value = form.recruitmentUrl;
   form.sharedStages = readSharedStages(source).map(stage => ({ type: stage.type, scheduledAt: timeToInput(stage.scheduledAt), durationMinutes: stage.scheduledAt ? String(stage.durationMinutes ?? 60) : null }));
   form.positions = readPositions(source).map(position => ({
     ...position, key: ++keySequence, applicationTime: timeToInput(position.applicationTime),
@@ -142,6 +156,67 @@ function load(): void {
   allowExit = false; lastResponse = undefined; snapshot(); clearErrors();
 }
 watch(() => [props.mode, props.application], load, { immediate: true });
+async function loadCompanies(search = ""): Promise<void> {
+  companyLoading.value = true;
+  companyError.value = "";
+  try {
+    companyOptions.value = (await listCompanies(search)).results;
+  } catch {
+    companyError.value = "公司目录加载失败，请稍后重试。";
+  } finally {
+    companyLoading.value = false;
+  }
+}
+async function searchCompanies(value: string): Promise<void> {
+  if (!form.companyId) form.companyName = value;
+  await loadCompanies(value);
+}
+watch(() => form.companyId, (id) => {
+  const company = companyOptions.value.find(item => item.id === id);
+  if (!company) return;
+  form.companyName = company.companyName;
+  form.companySearch = company.companyName;
+  form.recruitmentUrl = company.recruitmentUrl;
+});
+async function createCompanyFromForm(): Promise<void> {
+  const name = form.companySearch.trim() || form.companyName.trim();
+  if (!name) {
+    companyError.value = "请先输入公司名称。";
+    return;
+  }
+  companyError.value = "";
+  try {
+    const company = await createCompany({ companyName: name, recruitmentUrl: companyCreateUrl.value.trim() || null });
+    companyOptions.value = [company, ...companyOptions.value.filter(item => item.id !== company.id)];
+    form.companyId = company.id;
+    form.companyName = company.companyName;
+    form.companySearch = company.companyName;
+    form.recruitmentUrl = company.recruitmentUrl;
+    companyCreateOpen.value = false;
+    companyCreateUrl.value = "";
+  } catch (caught: unknown) {
+    const response = (caught as { response?: { data?: { details?: Record<string, unknown> } } }).response;
+    const details = response?.data?.details;
+    const existing = details?.company as Record<string, unknown> | undefined;
+    const existingId = Number(details?.company_id ?? existing?.id ?? 0);
+    if (existingId > 0) {
+      const company = existing && existing.company_name ? {
+        id: existingId,
+        companyName: String(existing.company_name),
+        recruitmentUrl: (existing.recruitment_url as string | null) ?? null,
+      } : await getCompany(existingId);
+      companyOptions.value = [company, ...companyOptions.value.filter(item => item.id !== company.id)];
+      form.companyId = company.id;
+      form.companyName = company.companyName;
+      form.companySearch = company.companyName;
+      form.recruitmentUrl = company.recruitmentUrl;
+      companyCreateOpen.value = false;
+      companyError.value = "公司已存在，已为你选择现有公司。";
+    } else {
+      companyError.value = "公司创建失败，请检查名称和招聘网站。";
+    }
+  }
+}
 function addPosition(): void { if (!isSubmitting.value) form.positions.push(emptyPosition()); }
 function removePosition(index: number): void {
   if (isSubmitting.value || form.positions.length <= 1) return;
@@ -171,14 +246,13 @@ function validateSchedule(value: ScheduleDraft, prefix: string): void {
 }
 function validate(): boolean {
   clearErrors();
-  if (!form.companyName.trim()) fieldErrors.companyName = "公司名称不能为空";
+  if (!form.companyId && !(form.companyName.trim() || form.companySearch.trim())) fieldErrors.companyName = "请选择或创建公司";
   form.sharedStages.forEach((stage, index) => validateSchedule(stage, `sharedStages.${index}`));
   form.positions.forEach((position, index) => {
     const prefix = `positions.${index}`;
     if (!position.positionName.trim()) fieldErrors[`${prefix}.positionName`] = "岗位名称不能为空";
     if (!statuses.some(status => status.value === position.applicationStatus)) fieldErrors[`${prefix}.applicationStatus`] = "请选择有效状态";
     if (position.applicationTime && Number.isNaN(Date.parse(position.applicationTime))) fieldErrors[`${prefix}.applicationTime`] = "请输入有效投递时间";
-    if (position.applicationUrl && !/^https?:\/\//i.test(position.applicationUrl.trim())) fieldErrors[`${prefix}.applicationUrl`] = "请输入 http 或 https 投递链接";
     position.interviews.forEach((interview, interviewIndex) => {
       const child = `${prefix}.interviews.${interviewIndex}`;
       if (!interview.name.trim()) fieldErrors[`${child}.name`] = "面试名称不能为空";
@@ -249,6 +323,12 @@ async function submit(): Promise<void> {
     const payload = requestPayload();
     if (props.mode === "edit") {
       const companyId = Number((props.application as Record<string, unknown>)?.id);
+      const sharedCompanyId = Number(form.companyId || (props.application as Record<string, unknown>)?.companyId || 0);
+      if (sharedCompanyId > 0 && form.recruitmentUrl !== originalRecruitmentUrl.value) {
+        const updatedCompany = await updateCompany(sharedCompanyId, { recruitmentUrl: form.recruitmentUrl });
+        form.recruitmentUrl = updatedCompany.recruitmentUrl;
+        originalRecruitmentUrl.value = updatedCompany.recruitmentUrl;
+      }
       const changes = editPayload();
       if (Object.keys(changes).length) {
         lastResponse = await update(companyId, changes);
@@ -277,6 +357,19 @@ function beforeUnload(event: BeforeUnloadEvent): void {
   if (isDirty.value && !allowExit) { event.preventDefault(); event.returnValue = ""; }
 }
 onMounted(() => window.addEventListener("beforeunload", beforeUnload));
+onMounted(() => {
+  void loadCompanies();
+  const initialCompanyId = Number(route.query.company_id ?? 0);
+  if (props.mode === "create" && initialCompanyId > 0 && !form.companyId) {
+    void getCompany(initialCompanyId).then((company) => {
+      companyOptions.value = [company, ...companyOptions.value.filter(item => item.id !== company.id)];
+      form.companyId = company.id;
+      form.companyName = company.companyName;
+      form.companySearch = company.companyName;
+      form.recruitmentUrl = company.recruitmentUrl;
+    }).catch(() => { companyError.value = "无法加载所选公司。"; });
+  }
+});
 onBeforeUnmount(() => window.removeEventListener("beforeunload", beforeUnload));
 defineExpose({ confirmExit, isDirty });
 </script>
@@ -291,7 +384,37 @@ defineExpose({ confirmExit, isDirty });
       <VCardText class="form-content">
         <VAlert v-if="generalError" class="mb-5" type="error" variant="tonal" role="alert">{{ generalError }}</VAlert>
         <p class="timezone-note">时间按浏览器本地时区填写；日历按北京时间显示。移除记录在保存后生效。</p>
-        <VTextField v-model="form.companyName" name="companyName" label="公司名称" required :disabled="isSubmitting" :error-messages="error('companyName')" />
+        <div class="company-selector" role="combobox" aria-label="公司">
+          <VAutocomplete
+            v-model="form.companyId"
+            v-model:search="form.companySearch"
+            name="companyId"
+            label="选择公司"
+            placeholder="搜索全局公司目录"
+            :items="companyOptions"
+            item-title="companyName"
+            item-value="id"
+            :loading="companyLoading"
+            :disabled="isSubmitting || mode === 'edit'"
+            :error-messages="error('companyId')"
+            role="presentation"
+            @update:search="searchCompanies"
+          />
+        </div>
+        <div class="company-create-row">
+          <VBtn type="button" variant="tonal" :disabled="isSubmitting || mode === 'edit'" @click="companyCreateOpen = !companyCreateOpen">创建公司</VBtn>
+          <span class="company-shared-note">公司名称和招聘网站是全局共享信息。</span>
+        </div>
+        <div v-if="companyCreateOpen" class="company-create-fields">
+          <VTextField v-model="companyCreateUrl" label="招聘网站（可选）" placeholder="https://..." :disabled="isSubmitting" />
+          <VBtn type="button" color="primary" :disabled="isSubmitting" @click="createCompanyFromForm">保存公司</VBtn>
+        </div>
+        <VAlert v-if="companyError" class="mb-4" type="warning" variant="tonal" role="alert">{{ companyError }}</VAlert>
+        <div v-if="form.companyId" class="company-recruitment-field">
+          <VTextField v-model="form.recruitmentUrl" label="公司招聘网站（共享）" placeholder="https://..." :disabled="isSubmitting || mode !== 'edit'" />
+          <span v-if="form.recruitmentUrl" class="company-recruitment-value">{{ form.recruitmentUrl }}</span>
+          <a v-if="form.recruitmentUrl" :href="form.recruitmentUrl" target="_blank" rel="noopener noreferrer">打开招聘网站</a>
+        </div>
         <fieldset class="flow-group" aria-label="公司共享流程" :disabled="isSubmitting">
           <legend>公司共享流程</legend>
           <p class="group-note">AI 面、测评和笔试各登记一次，所有岗位共用。</p>
@@ -309,7 +432,6 @@ defineExpose({ confirmExit, isDirty });
           </div>
           <div class="position-grid">
             <VTextField v-model="position.positionName" :name="index === 0 ? 'positionName' : `positionName${index + 1}`" label="岗位名称" required :disabled="isSubmitting" :error-messages="error(`positions.${index}.positionName`)" />
-            <VTextField v-model="position.applicationUrl" :name="index === 0 ? 'applicationUrl' : `applicationUrl${index + 1}`" label="投递链接" type="url" placeholder="https://..." :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationUrl`)" />
             <VSelect v-model="position.applicationStatus" :name="index === 0 ? 'applicationStatus' : `applicationStatus${index + 1}`" label="业务状态" :items="statuses" item-title="title" item-value="value" :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationStatus`)" />
             <VTextField v-model="position.applicationTime" :name="index === 0 ? 'applicationTime' : `applicationTime${index + 1}`" label="投递时间" type="datetime-local" clearable :disabled="isSubmitting" :error-messages="error(`positions.${index}.applicationTime`)" />
             <VTextarea v-model="position.notes" :name="index === 0 ? 'notes' : `notes${index + 1}`" label="备注" rows="2" auto-grow class="full-width" :disabled="isSubmitting" :error-messages="error(`positions.${index}.notes`)" />
@@ -340,6 +462,11 @@ defineExpose({ confirmExit, isDirty });
 .application-card { overflow: visible; }
 .form-heading { display: flex; align-items: center; justify-content: space-between; padding: 24px; gap: 12px; }
 .form-content { padding: 0 24px 24px; }
+.company-create-row, .company-create-fields, .company-recruitment-field { display: flex; align-items: center; gap: 12px; margin: -4px 0 16px; }
+.company-selector { min-width: 0; }
+.company-shared-note { color: #667085; font-size: .85rem; }
+.company-recruitment-field { align-items: flex-start; flex-direction: column; gap: 4px; }
+.company-recruitment-field .v-input { width: 100%; }
 .timezone-note, .group-note { color: #667085; font-size: .85rem; line-height: 1.6; margin-bottom: 16px; }
 .flow-group { border: 1px solid #dce3f2; border-radius: 12px; padding: 18px; margin: 12px 0 24px; min-inline-size: 0; }
 .flow-group > legend { font-weight: 700; color: #24375c; padding: 0 8px; }

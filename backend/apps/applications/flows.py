@@ -2,13 +2,17 @@
 
 from .models import ApplicationPosition, INTERVIEW_NAMES, PositionInterview, SHARED_TYPES, SharedStage
 
-POSITION_FIELDS = ("position_name", "application_url", "application_status", "application_time", "notes")
+POSITION_FIELDS = ("position_name", "application_status", "application_time", "notes")
 
 
 def bootstrap_legacy(company):
     if company.positions.exists():
         return
-    position = ApplicationPosition.objects.create(company=company, **{field: getattr(company, field) for field in POSITION_FIELDS})
+    position = ApplicationPosition.objects.create(
+        company=company,
+        application_url=getattr(company.company, "recruitment_url", None) or "",
+        **{field: getattr(company, field) for field in POSITION_FIELDS},
+    )
     for kind in SHARED_TYPES:
         when = getattr(company, kind + "_time", None)
         SharedStage.objects.get_or_create(company=company, type=kind, defaults={"scheduled_at": when, "duration_minutes": getattr(company, kind + "_duration_minutes", None) if when else None})
@@ -34,6 +38,8 @@ def sync_projection(company):
         values[kind + "_duration_minutes"] = interview.duration_minutes if interview else None
     for field, value in values.items():
         setattr(company, field, value)
+    company.company_name = company.company.company_name
+    company.application_url = company.company.recruitment_url or ""
     company.save()
 
 

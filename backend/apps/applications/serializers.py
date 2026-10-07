@@ -6,8 +6,74 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework.exceptions import NotFound
 
-from .models import ApplicationPosition, INTERVIEW_NAMES, JobApplication, PositionInterview, SHARED_TYPES, SharedStage
+from .models import (
+    ApplicationPosition,
+    Company,
+    INTERVIEW_NAMES,
+    JobApplication,
+    PositionInterview,
+    SHARED_TYPES,
+    SharedStage,
+    normalize_company_name,
+)
 from .flows import bootstrap_legacy, sync_legacy_write, sync_projection
+
+
+class CompanyPublicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ("id", "company_name", "recruitment_url")
+        read_only_fields = fields
+
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = (
+            "id",
+            "company_name",
+            "recruitment_url",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_company_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError("公司名称去除首尾空格后不能为空。")
+        return value
+
+    def validate_recruitment_url(self, value):
+        if value == "":
+            return None
+        return value.strip() if isinstance(value, str) else value
+
+    def validate(self, attrs):
+        candidate_name = attrs.get(
+            "company_name", getattr(self.instance, "company_name", "")
+        )
+        normalized = normalize_company_name(candidate_name)
+        conflict = Company.objects.filter(normalized_name=normalized)
+        if self.instance is not None:
+            conflict = conflict.exclude(pk=self.instance.pk)
+        if self.instance is not None and conflict.exists():
+            raise serializers.ValidationError(
+                {"company_name": ["该公司名称已存在。"]}
+            )
+        return attrs
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        instance = Company.objects.select_for_update().get(pk=instance.pk)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        for application in instance.applications.all():
+            application.company_name = instance.company_name
+            application.application_url = instance.recruitment_url or ""
+            application.save(update_fields=["company_name", "application_url", "updated_at"])
+        return instance
 
 
 class LegacyJobApplicationSerializer(serializers.ModelSerializer):
@@ -216,7 +282,6 @@ class SharedStageSerializer(ScheduleSerializer):
 
 class PositionFieldsSerializer(serializers.Serializer):
     position_name = serializers.CharField(max_length=200)
-    application_url = serializers.URLField(max_length=500, allow_blank=True, required=False)
     application_status = serializers.ChoiceField(choices=JobApplication.Status.choices, required=False)
     application_time = serializers.DateTimeField(allow_null=True, required=False)
     notes = serializers.CharField(allow_blank=True, required=False)
@@ -229,6 +294,19 @@ class PositionFieldsSerializer(serializers.Serializer):
 class PositionReadSerializer(serializers.ModelSerializer):
     interviews = InterviewSerializer(many=True, read_only=True)
     current_stage = serializers.ReadOnlyField()
+    application_url = serializers.SerializerMethodField()
+
+    def get_application_url(self, position):
+        # Non-empty values are historical APP-009 data. New nested records do
+        # not get this compatibility key, so the company URL is never copied
+        # into every new position response.
+        return position.application_url or None
+
+    def to_representation(self, instance):
+        result = super().to_representation(instance)
+        if not instance.application_url:
+            result.pop("application_url", None)
+        return result
 
     class Meta:
         model = ApplicationPosition
@@ -237,31 +315,59 @@ class PositionReadSerializer(serializers.ModelSerializer):
 
 class JobApplicationSerializer(LegacyJobApplicationSerializer):
     """The company contract, with flat input support for existing integrations."""
+    company_id = serializers.IntegerField(write_only=True, required=False, min_value=1)
+    company = CompanyPublicSerializer(read_only=True)
+    recruitment_url = serializers.SerializerMethodField()
     positions = serializers.JSONField(required=False)
     shared_stages = serializers.JSONField(required=False)
 
     class Meta(LegacyJobApplicationSerializer.Meta):
-        fields = LegacyJobApplicationSerializer.Meta.fields + ('positions', 'shared_stages')
+        fields = LegacyJobApplicationSerializer.Meta.fields + (
+            'company_id', 'company', 'recruitment_url', 'positions', 'shared_stages'
+        )
+
+    def get_recruitment_url(self, instance):
+        return instance.company.recruitment_url
 
     def validate_company_name(self, value):
-        value = super().validate_company_name(value)
-        if self.instance and JobApplication.objects.filter(user=self.instance.user, company_name__iexact=value).exclude(pk=self.instance.pk).exists():
-            raise serializers.ValidationError('该公司已存在，请在已有公司中添加岗位。')
-        return value
+        return super().validate_company_name(value)
 
     def to_internal_value(self, data):
-        self.nested_input = 'positions' in data or 'shared_stages' in data or (self.instance is not None and self.instance.flow_version == 2 and not any(key in data for key in ('position_name', 'application_status', *self.date_time_fields, 'notes', 'application_url', *(pair[1] for pair in self.stage_fields))))
+        self.nested_input = (
+            'positions' in data
+            or 'shared_stages' in data
+            or 'company_id' in data
+            or (
+                self.instance is not None
+                and self.instance.flow_version == 2
+                and not any(
+                    key in data
+                    for key in (
+                        'position_name', 'application_status', *self.date_time_fields,
+                        'notes', 'application_url',
+                        *(pair[1] for pair in self.stage_fields),
+                    )
+                )
+            )
+        )
         if not self.nested_input:
             return super().to_internal_value(data)
-        reject_fields(data, {'company_name', 'positions', 'shared_stages'})
+        allowed = {'company_id', 'company_name', 'positions', 'shared_stages'}
+        if self.instance is not None and 'company_id' in data:
+            raise serializers.ValidationError({'company_id': ['公司归属不可修改。']})
+        reject_fields(data, allowed)
         attrs = {}
+        if 'company_id' in data:
+            if type(data['company_id']) is not int or data['company_id'] < 1:
+                raise serializers.ValidationError({'company_id': ['公司 ID 必须是正整数。']})
+            attrs['company_id'] = data['company_id']
         if 'company_name' in data:
             field = serializers.CharField(max_length=200)
             try:
                 attrs['company_name'] = field.run_validation(data['company_name'])
             except serializers.ValidationError as exc:
                 raise serializers.ValidationError({'company_name': exc.detail}) from exc
-        elif self.instance is None:
+        elif self.instance is None and 'company_id' not in data:
             raise serializers.ValidationError({'company_name': ['该字段必填。']})
         for key in ('positions', 'shared_stages'):
             if key in data:
@@ -275,15 +381,17 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
     def validate(self, attrs):
         if not getattr(self, 'nested_input', False):
             return super().validate(attrs)
-        if self.instance and 'company_name' in attrs:
-            exists = JobApplication.objects.filter(user=self.instance.user, company_name__iexact=attrs['company_name']).exclude(pk=self.instance.pk).exists()
-            if exists:
-                raise serializers.ValidationError({'company_name': ['该公司已存在，请在已有公司中添加岗位。']})
+        if not self.instance and 'company_id' in attrs and 'company_name' in attrs:
+            company = Company.objects.filter(pk=attrs['company_id']).first()
+            if company is None:
+                raise serializers.ValidationError({'company_id': ['公司不存在。']})
+            if normalize_company_name(attrs['company_name']) != company.normalized_name:
+                raise serializers.ValidationError({'company_name': ['公司名称与 company_id 不一致。']})
         positions = []
         seen = set()
         for index, raw in enumerate(attrs.get('positions', [])):
             try:
-                reject_fields(raw, {'id', 'position_name', 'application_url', 'application_status', 'application_time', 'notes', 'interviews'})
+                reject_fields(raw, {'id', 'position_name', 'application_status', 'application_time', 'notes', 'interviews'})
                 position = None
                 if 'id' in raw:
                     if self.instance is None or type(raw['id']) is not int:
@@ -330,6 +438,9 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
                 raise serializers.ValidationError({'positions': {index: exc.detail}}) from exc
         if 'positions' in attrs:
             attrs['positions'] = positions
+        if self.instance and 'company_name' in attrs:
+            if normalize_company_name(attrs['company_name']) != self.instance.company.normalized_name:
+                raise serializers.ValidationError({'company_name': ['请通过公司目录修改共享公司名称。']})
         stages = []
         staged_values = {}
         for index, raw in enumerate(attrs.get('shared_stages', [])):
@@ -353,12 +464,18 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
         return attrs
 
     def to_representation(self, instance):
+        instance.company_name = instance.company.company_name
+        instance.application_url = instance.company.recruitment_url or ""
         positions = list(instance.positions.all())
         shared_stages = list(instance.shared_stages.all())
         instance._projection_positions = positions
         for position in positions:
             position._projection_shared_stages = shared_stages
         result = super().to_representation(instance)
+        result['company_id'] = instance.company_id
+        result['company'] = CompanyPublicSerializer(instance.company).data
+        result['recruitment_url'] = instance.company.recruitment_url
+        result['application_url'] = instance.company.recruitment_url
         result['positions'] = PositionReadSerializer(positions, many=True).data
         stages = {stage.type: stage for stage in shared_stages}
         result['shared_stages'] = [SharedStageSerializer(stages[kind]).data if kind in stages else {'type': kind, 'scheduled_at': getattr(instance, kind + '_time', None), 'duration_minutes': getattr(instance, kind + '_duration_minutes', None)} for kind in SHARED_TYPES]
@@ -398,15 +515,41 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
                 else:
                     PositionInterview.objects.create(position=position, **item)
 
+    @staticmethod
+    def resolve_or_create_company(validated_data):
+        company_id = validated_data.pop('company_id', None)
+        legacy_name = validated_data.pop('company_name', None)
+        legacy_url = validated_data.pop('application_url', None)
+        if company_id is not None:
+            company = Company.objects.filter(pk=company_id).first()
+            if company is None:
+                raise serializers.ValidationError({'company_id': ['公司不存在。']})
+            if legacy_name and normalize_company_name(legacy_name) != company.normalized_name:
+                raise serializers.ValidationError({'company_name': ['公司名称与 company_id 不一致。']})
+            return company
+        if not legacy_name:
+            raise serializers.ValidationError({'company_name': ['该字段必填。']})
+        normalized = normalize_company_name(legacy_name)
+        company = Company.objects.filter(normalized_name=normalized).first()
+        if company is not None:
+            return company
+        return Company.objects.create(
+            company_name=legacy_name,
+            normalized_name=normalized,
+            recruitment_url=(legacy_url or None),
+        )
+
     @transaction.atomic
     def create(self, validated_data):
         user = validated_data['user']
         self.lock_user(user)
+        company = self.resolve_or_create_company(validated_data)
         if not self.nested_input:
-            old_company = JobApplication.objects.filter(user=user, company_name__iexact=validated_data['company_name']).first()
+            old_company = JobApplication.objects.select_for_update().filter(user=user, company=company).first()
             if old_company:
                 bootstrap_legacy(old_company)
-                position = ApplicationPosition.objects.create(company=old_company, **{key: value for key, value in validated_data.items() if key in PositionFieldsSerializer().fields})
+                position_values = {key: value for key, value in validated_data.items() if key in PositionFieldsSerializer().fields}
+                position = ApplicationPosition.objects.create(company=old_company, **position_values)
                 for kind, name in INTERVIEW_NAMES.items():
                     if validated_data.get(kind + '_time'):
                         PositionInterview.objects.create(position=position, name=name, scheduled_at=validated_data[kind + '_time'], duration_minutes=validated_data.get(kind + '_duration_minutes'))
@@ -415,30 +558,43 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
                         SharedStage.objects.update_or_create(company=old_company, type=kind, defaults={'scheduled_at': validated_data[kind + '_time'], 'duration_minutes': validated_data.get(kind + '_duration_minutes')})
                 sync_projection(old_company)
                 return old_company
-            company = super().create(validated_data)
-            bootstrap_legacy(company)
-            return company
+            application_values = dict(validated_data)
+            application_values.pop('user', None)
+            application_values['company'] = company
+            application_values['company_name'] = company.company_name
+            application_values['application_url'] = company.recruitment_url or ""
+            result = JobApplication.objects.create(user=user, **application_values)
+            bootstrap_legacy(result)
+            return result
         values = dict(validated_data)
         positions = values.pop('positions')
         stages = values.pop('shared_stages', [])
-        company = JobApplication.objects.select_for_update().filter(user=user, company_name__iexact=values['company_name']).first()
-        if company is None:
-            company = JobApplication.objects.create(**values, flow_version=2)
+        application = JobApplication.objects.select_for_update().filter(user=user, company=company).first()
+        if application is None:
+            application = JobApplication.objects.create(
+                user=user,
+                company=company,
+                company_name=company.company_name,
+                application_url=company.recruitment_url or "",
+                flow_version=2,
+            )
         else:
-            bootstrap_legacy(company)
-            company.flow_version = 2
-        self.write_children(company, positions, stages)
-        sync_projection(company)
-        return company
+            bootstrap_legacy(application)
+            application.flow_version = 2
+        self.write_children(application, positions, stages)
+        sync_projection(application)
+        return application
 
     @transaction.atomic
     def update(self, instance, validated_data):
         self.lock_user(instance.user)
         instance = JobApplication.objects.select_for_update().get(pk=instance.pk)
         if not getattr(self, 'nested_input', False):
-            if 'company_name' in validated_data and JobApplication.objects.filter(user=instance.user, company_name__iexact=validated_data['company_name']).exclude(pk=instance.pk).exists():
-                raise serializers.ValidationError({'code': 'VALIDATION_ERROR', 'details': {'company_name': ['该公司已存在。']}})
+            if 'company_name' in validated_data:
+                raise serializers.ValidationError({'company_name': ['请通过公司目录修改共享公司名称。']})
             changed = set(validated_data)
+            validated_data.pop('application_url', None)
+            changed.discard('application_url')
             company = super().update(instance, validated_data)
             sync_legacy_write(company, changed)
             return company
@@ -446,8 +602,6 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
         values = dict(validated_data)
         positions = values.pop('positions', [])
         stages = values.pop('shared_stages', [])
-        if 'company_name' in values and JobApplication.objects.filter(user=instance.user, company_name__iexact=values['company_name']).exclude(pk=instance.pk).exists():
-            raise serializers.ValidationError({'code': 'VALIDATION_ERROR', 'details': {'company_name': ['该公司已存在。']}})
         for key, value in values.items():
             setattr(instance, key, value)
         instance.flow_version = 2

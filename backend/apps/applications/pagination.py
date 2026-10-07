@@ -81,3 +81,10 @@ class JobApplicationPagination(PageNumberPagination):
                 "results": data,
             }
         )
+
+
+class CompanyPagination(JobApplicationPagination):
+    """The company directory uses the same public pagination envelope."""
+
+    def get_paginated_response(self, data):
+        return super().get_paginated_response(data)

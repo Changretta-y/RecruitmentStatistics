@@ -29,10 +29,21 @@ export type ApplicationStage =
 
 export type ApplicationCurrentStage = ApplicationStatus;
 
+export interface Company {
+  id: number;
+  companyName: string;
+  recruitmentUrl: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface JobApplication {
   id: number;
   user: number;
+  companyId: number;
+  company: Company;
   companyName: string;
+  recruitmentUrl: string | null;
   positionName: string;
   applicationUrl: string;
   applicationStatus: ApplicationStatus;
@@ -73,7 +84,7 @@ export interface SharedApplicationStage extends Omit<ApplicationInterview, "id" 
 export interface ApplicationPosition {
   id?: number;
   positionName: string;
-  applicationUrl: string;
+  applicationUrl?: string | null;
   applicationStatus: ApplicationStatus;
   currentStage: ApplicationCurrentStage;
   applicationTime: string | null;

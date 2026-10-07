@@ -82,6 +82,14 @@ class SharingErrorSerializer(serializers.Serializer):
 
 class SharedApplicationSerializer(serializers.ModelSerializer):
     current_stage = serializers.ReadOnlyField()
+    company_name = serializers.SerializerMethodField()
+    application_url = serializers.SerializerMethodField()
+
+    def get_company_name(self, instance):
+        return instance.company.company_name
+
+    def get_application_url(self, instance):
+        return instance.company.recruitment_url
 
     class Meta:
         model = JobApplication

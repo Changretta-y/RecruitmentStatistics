@@ -187,10 +187,10 @@ class SharedApplicationsView(SharingAPIView):
         low, high = sorted((request.user.pk, target.pk))
         if not SharingRequest.objects.filter(lower_user_id=low, higher_user_id=high, status="accepted").exists():
             not_found()
-        queryset = JobApplication.objects.filter(user=target).order_by("-updated_at", "-id")
+        queryset = JobApplication.objects.filter(user=target).select_related("company").order_by("-updated_at", "-id")
         search = request.query_params.get("search", "").strip()
         if search:
-            queryset = queryset.filter(Q(company_name__icontains=search) | Q(position_name__icontains=search))
+            queryset = queryset.filter(Q(company__company_name__icontains=search) | Q(company_name__icontains=search) | Q(position_name__icontains=search))
         paginator = JobApplicationPagination()
         try:
             page = paginator.paginate_queryset(queryset, request, view=self)

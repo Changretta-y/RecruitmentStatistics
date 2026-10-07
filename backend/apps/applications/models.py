@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+import unicodedata
 
 
 CURRENT_STAGE_PRIORITY = {
@@ -50,6 +51,41 @@ def _schedule_timestamp(value):
     return value.timestamp()
 
 
+def normalize_company_name(value: str) -> str:
+    """Return the stable Unicode-insensitive key used by the global directory."""
+    return unicodedata.normalize("NFKC", str(value or "").strip()).casefold()
+
+
+class Company(models.Model):
+    company_name = models.CharField(max_length=200)
+    normalized_name = models.CharField(max_length=200, unique=True)
+    recruitment_url = models.URLField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "companies"
+        ordering = ["company_name", "id"]
+        indexes = [
+            models.Index(fields=["company_name"], name="company_name_idx"),
+            models.Index(fields=["created_at"], name="company_created_idx"),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.company_name = str(self.company_name or "").strip()
+        if not self.company_name:
+            raise ValidationError({"company_name": "公司名称去除首尾空格后不能为空。"})
+        self.normalized_name = normalize_company_name(self.company_name)
+
+    def save(self, *args, **kwargs):
+        self.company_name = str(self.company_name or "").strip()
+        self.normalized_name = normalize_company_name(self.company_name)
+        if self.recruitment_url == "":
+            self.recruitment_url = None
+        return super().save(*args, **kwargs)
+
+
 class JobApplication(models.Model):
     class Status(models.TextChoices):
         APPLIED = "applied", "投递"
@@ -66,7 +102,14 @@ class JobApplication(models.Model):
         on_delete=models.CASCADE,
         related_name="job_applications",
     )
-    company_name = models.CharField(max_length=200)
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        related_name="applications",
+    )
+    # Retained for the APP-009/APP-011 flat compatibility window. New writes
+    # are sourced from Company and serializers expose it as a read projection.
+    company_name = models.CharField(max_length=200, blank=True, default="")
     flow_version = models.PositiveSmallIntegerField(default=1)
     position_name = models.CharField(max_length=200)
     application_url = models.URLField(max_length=500, blank=True, default="")
@@ -100,7 +143,12 @@ class JobApplication(models.Model):
             models.Index(fields=["user", "application_status"]),
             models.Index(fields=["user", "company_name"]),
         ]
-        constraints = [models.UniqueConstraint(models.F("user"), models.functions.Lower(models.functions.Trim("company_name")), name="application_unique_company")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "company"],
+                name="application_unique_user_company",
+            )
+        ]
 
     def clean(self):
         super().clean()

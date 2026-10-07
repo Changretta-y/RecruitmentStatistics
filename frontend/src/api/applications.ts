@@ -32,10 +32,18 @@ const applicationFieldMap: Record<string, string> = {
 
 function mapApplication(value: Record<string, unknown>): JobApplication {
   const get = (snake: string, camel: string): unknown => value[snake] ?? value[camel];
+  const rawCompany = get("company", "company");
+  const companyValue = rawCompany && typeof rawCompany === "object" ? rawCompany as Record<string, unknown> : {};
+  const companyId = Number(get("company_id", "companyId") ?? companyValue.id ?? 0);
+  const companyName = String(get("company_name", "companyName") ?? companyValue.company_name ?? companyValue.companyName ?? "");
+  const recruitmentUrl = (get("recruitment_url", "recruitmentUrl") ?? companyValue.recruitment_url ?? companyValue.recruitmentUrl ?? null) as string | null;
   return {
     id: value.id as number,
     user: value.user as number,
-    companyName: get("company_name", "companyName") as string,
+    companyId,
+    company: { id: companyId, companyName, recruitmentUrl },
+    companyName,
+    recruitmentUrl,
     positionName: get("position_name", "positionName") as string,
     applicationUrl: (get("application_url", "applicationUrl") as string) ?? "",
     applicationStatus: get("application_status", "applicationStatus") as JobApplication["applicationStatus"],

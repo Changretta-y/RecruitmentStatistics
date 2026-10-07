@@ -117,10 +117,12 @@ class CalendarEventsView(APIView):
 
         applications = (
             JobApplication.objects.filter(user=request.user)
+            .select_related("company")
             .filter(candidates)
             .only(
                 "id",
                 "company_name",
+                "company__company_name",
                 "position_name",
                 *(field for pair in STAGES for field in pair[:2]),
             )
@@ -139,7 +141,7 @@ class CalendarEventsView(APIView):
                     events.append(
                         {
                             "application_id": application.pk,
-                            "company_name": application.company_name,
+                            "company_name": application.company.company_name,
                             "position_name": application.position_name,
                             "stage": stage,
                             "start_at": start_at,

@@ -340,7 +340,7 @@ function displayStatus(value: ApplicationStatus): string { return APPLICATION_ST
 function statusColor(position: ApplicationPosition): string {
   return position.currentStage === "rejected" ? "error" : "primary";
 }
-function safeLink(value: string): string | undefined {
+function safeLink(value: string | null | undefined): string | undefined {
   try {
     const url = new URL(value);
     return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
@@ -510,6 +510,7 @@ onMounted(() => { void initializeAndLoad(); });
           <tr class="company-row">
             <td class="company-cell font-weight-medium">
               <span>{{ application.companyName }}</span>
+              <a v-if="safeLink(application.recruitmentUrl)" class="company-recruitment-link" :href="safeLink(application.recruitmentUrl)" target="_blank" rel="noopener noreferrer">{{ application.recruitmentUrl }}</a>
               <span v-if="positionsOf(application).length > 1" class="position-count">{{ positionsOf(application).length }} 个岗位</span>
               <button v-if="positionsOf(application).length > 1" type="button" class="expand-company" :aria-expanded="expandedCompanies.has(application.id)" :aria-controls="`company-positions-${application.id}`" :aria-label="`${expandedCompanies.has(application.id) ? '折叠' : '展开'} ${application.companyName} 的岗位`" @click="toggleCompany(application.id)">{{ expandedCompanies.has(application.id) ? '折叠' : '展开' }}</button>
             </td>
@@ -517,7 +518,6 @@ onMounted(() => { void initializeAndLoad(); });
               <template v-if="positionsOf(application)[0]">
                 <span class="position-name">{{ positionsOf(application)[0].positionName }}</span>
                 <span class="position-meta">投递：{{ displayTime(positionsOf(application)[0].applicationTime) }}</span>
-                <a v-if="safeLink(positionsOf(application)[0].applicationUrl)" class="position-link" :href="safeLink(positionsOf(application)[0].applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
                 <span v-if="positionsOf(application)[0].notes" class="position-notes" :title="positionsOf(application)[0].notes">备注：{{ positionsOf(application)[0].notes }}</span>
                 <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="positionsOf(application)[0].interviews.length"><span v-for="(interview, index) in positionsOf(application)[0].interviews" :key="interview.id ?? index" class="interview-item" :title="interview.name"><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </template>
@@ -532,7 +532,9 @@ onMounted(() => { void initializeAndLoad(); });
             </td>
             <td class="updated-cell">{{ displayTime(application.updatedAt) }}</td>
             <td class="actions-cell">
-              <VBtn variant="text" size="small" :href="`/applications/${application.id}/edit`" :aria-label="`编辑 ${application.companyName} ${application.positionName}`" @click.prevent="openEdit(application)">编辑</VBtn>
+              <VBtn variant="text" size="small" :to="{ path: '/applications/new', query: { company_id: application.companyId } }" :aria-label="`为 ${application.companyName} 新增岗位`">新增岗位</VBtn>
+              <VBtn variant="text" size="small" :aria-label="`修改网站 ${application.companyName}`" @click="openEdit(application)">修改网站</VBtn>
+              <VBtn variant="text" size="small" :aria-label="`编辑 ${application.companyName} ${application.positionName}`" @click="openEdit(application)">编辑</VBtn>
               <VBtn variant="text" size="small" color="error" :aria-label="`删除 ${application.companyName} ${application.positionName}`" @click="openDeleteDialog(application)" @keydown.enter.prevent="openDeleteDialog(application)">删除</VBtn>
             </td>
           </tr>
@@ -542,14 +544,13 @@ onMounted(() => { void initializeAndLoad(); });
               <td class="position-cell">
                 <span class="position-name">{{ position.positionName }}</span>
                 <span class="position-meta">投递：{{ displayTime(position.applicationTime) }}</span>
-                <a v-if="safeLink(position.applicationUrl)" class="position-link" :href="safeLink(position.applicationUrl)" target="_blank" rel="noopener noreferrer">投递链接</a>
                 <span v-if="position.notes" class="position-notes" :title="position.notes">备注：{{ position.notes }}</span>
                 <span class="interview-flow"><span class="flow-label">面试：</span><template v-if="position.interviews.length"><span v-for="(interview, interviewIndex) in position.interviews" :key="interview.id ?? interviewIndex" class="interview-item" :title="interview.name"><span class="interview-time">{{ displayTime(interview.scheduledAt) }}</span></span></template><span v-else>暂无</span></span>
               </td>
               <td class="status-cell"><VChip size="small" :color="statusColor(position)" variant="tonal">{{ displayStatus(position.currentStage) }}</VChip></td>
               <td class="shared-flow-cell" aria-hidden="true"></td>
               <td class="updated-cell" aria-hidden="true"></td>
-              <td class="actions-cell" aria-hidden="true"></td>
+              <td class="actions-cell"><VBtn variant="text" size="small" :aria-label="`编辑 ${application.companyName} ${position.positionName}`" @click="openEdit(application)">编辑岗位</VBtn></td>
             </tr>
           </template>
         </tbody>
@@ -639,6 +640,7 @@ onMounted(() => { void initializeAndLoad(); });
 .expand-company:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
 .position-name { display: block; color: #24375c; font-weight: 700; }
 .position-meta, .position-link { display: inline-block; margin: 3px 10px 0 0; color: #667085; font-size: .75rem; }
+.company-recruitment-link { display: block; margin-top: 4px; color: #3157d5; font-size: .75rem; }
 .position-link { color: #3157d5; }
 .position-notes { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #667085; font-size: .75rem; }
 .interview-flow { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; color: #475467; font-size: .75rem; }

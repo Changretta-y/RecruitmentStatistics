@@ -1,0 +1,39 @@
+# APP-012 RED
+
+- 测试角色：测试 Agent
+- 状态：`RED_CONFIRMED`
+- 环境：Windows；Python `3.11.13`（`.python-version`）；uv `0.7.21`；Node.js `20.19.0`（`.nvmrc`）；npm `10.8.2`；pytest `8.4.2`；pytest-django `4.14.0`；Playwright `1.63.0`。
+- 测试数据库：通过 `backend/tests/run-isolated-postgres.ps1` 启动/复用独立 PostgreSQL 集群，测试进程使用独立 `DATABASE_URL` 和临时测试密钥；未连接开发或生产数据库。
+- 命令：
+  - 基线后端：`backend/tests/run-isolated-postgres.ps1 -Port 55439 -DatabaseName app009_test -PytestArguments @('tests/test_app_009.py','tests/test_app_010.py','tests/test_app_011.py','tests/test_share_001.py','tests/test_cal_002.py','tests/test_mail_001.py','tests/test_mail_002.py','--tb=no','-q')`
+  - APP-012 后端：在 `backend/` 中设置独立测试 `DATABASE_URL`/临时 `DJANGO_SECRET_KEY` 后，`uv run --no-sync pytest tests/test_app_012.py --reuse-db --tb=no -q`，连续运行 2 次。
+  - 基线前端：`frontend/npm test -- --reporter=dot`；APP-011 UI：`npx playwright test --config=tests/playwright.web_app_011.config.mts`。
+  - APP-012 前端：在 `frontend/` 中执行 `npx playwright test --config=tests/playwright.web_app_012.config.mts`，连续运行 2 次。
+- 通过 / 失败：
+  - APP-012 后端专项：两次均 `5 failed, 0 errors`。
+  - APP-012 前端专项：两次均 `3 failed, 0 errors`。
+  - 没有将环境准备错误、夹具错误或超时当作 RED 证据。
+- 公开输入：
+  - `GET/POST /api/v1/companies/` 未认证请求。
+  - 两个已认证用户使用首尾空白/大小写规范化变体创建同一公司，随后搜索公司目录。
+  - 使用 `company_id` 创建两个用户各自的岗位，创建面试并访问对方应用、岗位、面试资源。
+  - 同一用户使用同一 `company_id` 追加第二岗位；提交岗位级 `application_url`；PATCH 公司招聘网站；PATCH 岗位状态。
+  - 旧 flat `company_name`、`application_url` 请求，检查新公司/招聘网站/状态兼容投影。
+  - 前端使用公开 DOM 和拦截的 HTTP JSON：公司选择/创建入口、已有公司新增多个岗位、招聘网站只展示一次、折叠后岗位编辑、共享公司网站编辑。
+- 期望行为：
+  - 公司目录受保护；规范化名称全局唯一，重复创建返回 `409 COMPANY_EXISTS` 和同一 `company_id`，目录只返回公司公开字段。
+  - A/B 能复用同一公司并看到同一 `recruitment_url`，但用户应用、岗位、面试相互隔离，越权目标统一 `404`。
+  - 同一用户追加岗位复用同一应用聚合；招聘网站只有公司级来源，岗位级 `application_url` 被 `400 VALIDATION_ERROR` 拒绝；公司 PATCH 对双方可见，岗位状态更新不改变 URL。
+  - 旧 flat 响应保留兼容投影且维持 APP-011 八值状态；前端使用公司选择器/创建入口，网站显示一次，折叠后只显示当前用户岗位并提供岗位编辑。
+- 实际行为：
+  - 后端首个公开断言 `GET /api/v1/companies/` 未认证实际返回 `404`（期望 `401`），说明全局公司目录行为尚不存在；其余后端用例在创建公司前同样因缺失公司目录而失败。
+  - 前端新建表单的公司选择器 `combobox` 实际数量为 `0`；已有公司行未显示 `recruitment_url`；公司行没有共享网站编辑入口。HTTP fixture 的登录和应用列表请求均正常完成。
+- 是否稳定复现：是。后端和前端专项各连续运行 2 次，失败数量和失败断言一致；均无测试收集错误、数据库连接错误或 fixture/setup 错误。
+- 回归结果：
+  - 后端相邻基线 `142 passed, 2 failed, 3 errors`；失败为既有 SHARE-001 边界/并发及 APP-010 历史迁移问题，未作为 APP-012 RED 证据。
+  - 前端 Vitest 基线 `7 passed, 4 failed`（`55 passed, 24 failed`），已有 WEB-AUTH/WEB-APP/CAL 测试失败；未作为 APP-012 RED 证据。
+  - APP-011 Playwright 基线 `2 passed, 1 failed`，失败为既有状态筛选 UI 选择器超时；未作为 APP-012 RED 证据。
+  - APP-012 已覆盖公开 API 兼容投影及 APP-011 状态字段断言；SHARE/calendar/mail 相邻回归已运行并在上述基线中列出结果。
+- 覆盖的验收标准：全局公司目录认证/唯一性/公开字段；A/B 公司复用与岗位/面试隔离；同用户岗位聚合复用；公司 URL 共享与岗位 URL 禁写；flat 兼容投影；公司选择/创建、网站单次展示、折叠岗位编辑的公开 UI。
+- 未覆盖风险：存量非空数据迁移的合并行数、URL 冲突确定性选择、异常记录和逆迁移保护没有稳定的公开导入入口/契约迁移标识，未越过黑盒边界伪造测试；并发重复创建、真实浏览器网络错误/409 竞态、完整 SHARE/calendar/mail 通过结果待实现后独立复测。已有相邻基线失败需由对应任务处理。
+- 黑盒声明：未读取或分析 `backend/apps/`、`frontend/src/`，未修改生产代码；新增测试仅使用公开 HTTP/DOM 输入输出，文件仅位于 `backend/tests/`、`frontend/tests/` 和 `docs/test-reports/`。

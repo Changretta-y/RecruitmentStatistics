@@ -1,5 +1,5 @@
 from django.http import Http404
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F, Min, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
@@ -12,10 +12,10 @@ from rest_framework.views import APIView
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema, extend_schema_view
 
 from backend.config.schema import ErrorResponse
-from .models import ApplicationPosition, JobApplication, PositionInterview, current_stage_for_position
+from .models import ApplicationPosition, Company, JobApplication, PositionInterview, current_stage_for_position, normalize_company_name
 from .flows import sync_projection
-from .pagination import JobApplicationPagination
-from .serializers import InterviewSerializer, JobApplicationSerializer
+from .pagination import CompanyPagination, JobApplicationPagination
+from .serializers import CompanySerializer, InterviewSerializer, JobApplicationSerializer, PositionReadSerializer
 
 
 application_query_parameters = [
@@ -34,6 +34,79 @@ application_query_parameters = [
     OpenApiParameter("application_time_before", OpenApiTypes.DATETIME, OpenApiParameter.QUERY, required=False),
     OpenApiParameter("ordering", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
 ]
+
+
+class CompanyListCreateView(generics.ListCreateAPIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    serializer_class = CompanySerializer
+    pagination_class = CompanyPagination
+
+    def get_queryset(self):
+        queryset = Company.objects.all()
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            queryset = queryset.filter(company_name__icontains=search)
+        ordering = self.request.query_params.get("ordering")
+        allowed = {"company_name", "-company_name", "created_at", "-created_at"}
+        if ordering is None:
+            return queryset.order_by("company_name", "id")
+        terms = [term.strip() for term in ordering.split(",") if term.strip()]
+        if not terms or any(term not in allowed for term in terms):
+            raise ValidationError({"code": "VALIDATION_ERROR", "details": {"ordering": ["ordering contains an invalid field."]}})
+        return queryset.order_by(*terms, "id")
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"code": "VALIDATION_ERROR", "details": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            with transaction.atomic():
+                company = serializer.save()
+        except IntegrityError:
+            normalized = normalize_company_name(request.data.get("company_name", ""))
+            existing = Company.objects.filter(normalized_name=normalized).first()
+            if existing is None:
+                raise
+            return Response(
+                {
+                    "code": "COMPANY_EXISTS",
+                    "message": "公司已存在，请选择现有公司。",
+                    "details": {
+                        "company_id": existing.pk,
+                        "company": CompanySerializer(existing).data,
+                    },
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(CompanySerializer(company).data, status=status.HTTP_201_CREATED)
+
+
+class CompanyDetailView(generics.RetrieveUpdateAPIView):
+    authentication_classes = (JWTAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    serializer_class = CompanySerializer
+    queryset = Company.objects.all()
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except Http404:
+            return Response({"code": "NOT_FOUND", "message": "未找到公司。", "details": {}}, status=404)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+        except Http404:
+            return Response({"code": "NOT_FOUND", "message": "未找到公司。", "details": {}}, status=404)
+        serializer = self.get_serializer(instance, data=request.data, partial=kwargs.pop("partial", False))
+        if not serializer.is_valid():
+            return Response({"code": "VALIDATION_ERROR", "details": serializer.errors}, status=400)
+        try:
+            updated = serializer.save()
+        except IntegrityError:
+            return Response({"code": "VALIDATION_ERROR", "details": {"company_name": ["该公司名称已存在。"]}}, status=400)
+        return Response(CompanySerializer(updated).data)
 
 
 @extend_schema_view(
@@ -77,13 +150,14 @@ class JobApplicationListCreateView(generics.ListCreateAPIView):
         return self.list(request, *args, **kwargs)
 
     def get_queryset(self):
-        queryset = JobApplication.objects.filter(user=self.request.user).annotate(assessment_time=Min("shared_stages__scheduled_at", filter=Q(shared_stages__type="assessment"))).prefetch_related("positions__interviews", "shared_stages")
+        queryset = JobApplication.objects.filter(user=self.request.user).select_related("company").annotate(assessment_time=Min("shared_stages__scheduled_at", filter=Q(shared_stages__type="assessment"))).prefetch_related("positions__interviews", "shared_stages")
         params = self.request.query_params
 
         search = params.get("search")
         if search:
             queryset = queryset.filter(
-                Q(company_name__icontains=search)
+                Q(company__company_name__icontains=search)
+                | Q(company_name__icontains=search)
                 | Q(position_name__icontains=search)
                 | Q(positions__position_name__icontains=search)
             )
@@ -253,7 +327,7 @@ class JobApplicationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = JobApplicationSerializer
 
     def get_queryset(self):
-        return JobApplication.objects.filter(user=self.request.user).prefetch_related("positions__interviews", "shared_stages")
+        return JobApplication.objects.filter(user=self.request.user).select_related("company").prefetch_related("positions__interviews", "shared_stages")
 
     @extend_schema(
         responses={200: JobApplicationSerializer, 401: OpenApiResponse(ErrorResponse), 404: OpenApiResponse(ErrorResponse)},
@@ -340,6 +414,11 @@ class PositionDeleteView(APIView):
     authentication_classes = (JWTAuthentication,)
     permission_classes = (IsAuthenticated,)
 
+    def get(self, request, company_id, position_id):
+        company = get_object_or_404(JobApplication.objects.select_related("company"), pk=company_id, user=request.user)
+        position = get_object_or_404(ApplicationPosition, pk=position_id, company=company)
+        return Response(PositionReadSerializer(position).data)
+
     @transaction.atomic
     def delete(self, request, company_id, position_id):
         company = get_object_or_404(JobApplication.objects.select_for_update(), pk=company_id, user=request.user)
@@ -360,6 +439,8 @@ class InterviewResourceView(APIView):
         company = get_object_or_404(JobApplication.objects.select_for_update(), pk=company_id, user=request.user)
         position = get_object_or_404(ApplicationPosition, pk=position_id, company=company)
         interview = get_object_or_404(PositionInterview, pk=interview_id, position=position) if interview_id is not None else None
+        if request.method == "GET":
+            return Response(InterviewSerializer(interview).data)
         if request.method == "DELETE":
             interview.delete()
             sync_projection(company)
@@ -375,6 +456,9 @@ class InterviewResourceView(APIView):
     def post(self, request, company_id, position_id):
         return self.mutate(request, company_id, position_id)
 
+    def get(self, request, company_id, position_id, interview_id):
+        return self.mutate(request, company_id, position_id, interview_id)
+
     def patch(self, request, company_id, position_id, interview_id):
         return self.mutate(request, company_id, position_id, interview_id)
 
@@ -387,4 +471,4 @@ class InterviewCreateView(InterviewResourceView):
 
 
 class InterviewDetailView(InterviewResourceView):
-    http_method_names = ["patch", "delete", "options"]
+    http_method_names = ["get", "patch", "delete", "options"]
