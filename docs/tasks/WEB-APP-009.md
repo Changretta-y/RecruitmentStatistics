@@ -3,6 +3,7 @@
 - 状态：`TEST_WRITING`
 - 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
 - 用户价值：项目在浏览器标签页、侧栏和内部品牌区域使用统一的项目 Logo，形成一致识别。
+- 资源来源：用户本次附件 `codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png`；SHA-256 `9C0420FD9643705BD36A1C9E8E5C4D80B5FE100EA5B22492BB1301ABBA610403`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-4ff5e87c-fa2d-4382-83b7-c83163af7ef5.png` 读取后复制到项目资源目录。
 - 范围：Logo 静态资源、网页 favicon、AppShell 品牌区域和前端构建产物。
 - 非范围：重新绘制图片、后端接口、手机端专门适配、浏览器扩展品牌重构。
 - 允许修改范围：项目管理仅 `docs/requirements/`、`docs/tasks/`、`docs/acceptance/`；测试仅 `frontend/tests/`、`docs/test-reports/`；实现仅 `frontend/src/`、`frontend/public/`、`frontend/index.html`（如存在）和 `docs/implementation-notes/`。
