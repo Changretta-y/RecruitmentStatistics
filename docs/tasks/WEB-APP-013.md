@@ -1,6 +1,6 @@
 # WEB-APP-013 公司链接与搜索建议交互修复
 
-- 状态：RED_CONFIRMED
+- 状态：READY_FOR_TEST
 - 用户价值：投递列表的公司名直接作为招聘网站链接，关键字建议完整显示并能在点击页面其他区域后关闭。
 - 范围：修复 `ApplicationsView` 公司列的链接呈现、搜索建议浮层定位和外部点击关闭行为。
 - 非范围：不改变公司/岗位 API、搜索条件、分页、公司招聘 URL 数据、手机端适配或插件行为。
@@ -33,4 +33,4 @@
 - 当前状态：PLANNED → TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`，仅修改测试和报告，先证明 RED。
 - RED 证据：测试提交 `b7f45c3`，报告 `docs/test-reports/WEB-APP-013-red.md`；新专项 8 项中 3 项稳定失败，WEB-APP-008 回归 3/3 通过。
-- 实现 Agent：`company_implementation`，收到 RED 后仅修改前端生产实现和实现说明。
+- 实现交接：实现提交 `0867edb`，说明 `docs/implementation-notes/WEB-APP-013.md`；专项 8/8、WEB-APP-008 3/3、APP-012 3/3、lint/build 通过，交回测试 Agent 独立复测。
