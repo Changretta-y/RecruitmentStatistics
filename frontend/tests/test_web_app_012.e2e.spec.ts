@@ -101,16 +101,19 @@ test.describe('APP-012 global company public UI contract', () => {
     expect(saved.body.positions.every((position: any) => position.recruitment_url === undefined)).toBe(true);
   });
 
-  test('company website renders once, expansion reveals only current-user positions, and each position has an edit entry', async ({ page }) => {
+  test('company name is the sole website link, expansion reveals only current-user positions, and each position has an edit entry', async ({ page }) => {
     await setup(page);
     const row = page.getByRole('row').filter({ hasText: '全局示例科技' });
-    await expect(row.getByText(recruitmentUrl, { exact: true })).toHaveCount(1);
+    const companyLink = row.getByRole('link', { name: '全局示例科技', exact: true });
+    await expect(companyLink).toHaveAttribute('href', recruitmentUrl);
+    await expect(companyLink).toHaveAttribute('target', '_blank');
+    await expect(row.getByText(recruitmentUrl, { exact: true })).toHaveCount(0);
     const expand = row.locator('button[aria-expanded]');
     await expect(expand).toHaveCount(1);
     await expand.click();
     await expect(page.getByText('后端工程师', { exact: true })).toBeVisible();
     await expect(page.getByText('数据工程师', { exact: true })).toBeVisible();
-    await expect(page.getByText(recruitmentUrl, { exact: true })).toHaveCount(1);
+    await expect(page.getByText(recruitmentUrl, { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /编辑/ })).toHaveCount(2);
   });
 
