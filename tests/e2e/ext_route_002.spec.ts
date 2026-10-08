@@ -279,6 +279,7 @@ test('two existing same-name positions are never silently patched by one preview
     await scenario.fixture.popup.locator('#position-name').fill('重复岗位');
     await scenario.fixture.popup.locator('#preview-button').click();
     await expect(scenario.fixture.popup.locator('#preview-panel')).toBeVisible();
+    await expect(scenario.fixture.popup.locator('#preview-panel')).toContainText(/选择|多条|新建|新增/);
     if (await scenario.fixture.popup.locator('#confirm-button').isEnabled()) {
       await scenario.fixture.popup.locator('#confirm-button').click();
       await scenario.fixture.popup.waitForTimeout(300);
