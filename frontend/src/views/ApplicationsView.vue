@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { VAlert } from "vuetify/components/VAlert";
 import { VBtn } from "vuetify/components/VBtn";
@@ -76,6 +76,9 @@ const suggestionError = ref<"unauthorized" | "network" | null>(null);
 const companySuggestions = ref<string[]>([]);
 const suggestionsOwnerKey = ref<string | null>(null);
 const suggestionRequestSequence = ref(0);
+const searchFieldElement = ref<HTMLElement | null>(null);
+const suggestionsPanelElement = ref<HTMLElement | null>(null);
+const suggestionsPanelStyle = ref({ top: "0px", left: "0px", width: "0px" });
 const pageInput = ref("1");
 const pageValidationError = ref("");
 
@@ -258,9 +261,28 @@ async function loadCompanySuggestions(): Promise<void> {
 
 async function openCompanySuggestions(): Promise<void> {
   suggestionsOpen.value = true;
+  updateSuggestionsPosition();
   const ownerKey = authUserKey();
   if (ownerKey && suggestionsOwnerKey.value === ownerKey && !suggestionError.value) return;
   await loadCompanySuggestions();
+}
+
+function updateSuggestionsPosition(): void {
+  const bounds = searchFieldElement.value?.getBoundingClientRect();
+  if (!bounds) return;
+  suggestionsPanelStyle.value = {
+    top: `${bounds.bottom - 8}px`,
+    left: `${bounds.left}px`,
+    width: `${bounds.width}px`,
+  };
+}
+
+function closeSuggestionsOnOutsidePointer(event: PointerEvent): void {
+  if (!suggestionsOpen.value) return;
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (searchFieldElement.value?.contains(target) || suggestionsPanelElement.value?.contains(target)) return;
+  suggestionsOpen.value = false;
 }
 
 function retryCompanySuggestions(): void {
@@ -343,7 +365,7 @@ function statusColor(position: ApplicationPosition): string {
 function safeLink(value: string | null | undefined): string | undefined {
   try {
     const url = new URL(value);
-    return ["http:", "https:"].includes(url.protocol) ? url.href : undefined;
+    return ["http:", "https:"].includes(url.protocol) ? value?.trim() : undefined;
   } catch { return undefined; }
 }
 function toDateTimeLocal(value: string): string {
@@ -391,7 +413,17 @@ async function initializeAndLoad(): Promise<void> {
   applyQuery(initial);
   void loadApplications(initial);
 }
-onMounted(() => { void initializeAndLoad(); });
+onMounted(() => {
+  void initializeAndLoad();
+  document.addEventListener("pointerdown", closeSuggestionsOnOutsidePointer, true);
+  window.addEventListener("resize", updateSuggestionsPosition);
+  window.addEventListener("scroll", updateSuggestionsPosition, true);
+});
+onUnmounted(() => {
+  document.removeEventListener("pointerdown", closeSuggestionsOnOutsidePointer, true);
+  window.removeEventListener("resize", updateSuggestionsPosition);
+  window.removeEventListener("scroll", updateSuggestionsPosition, true);
+});
 </script>
 
 <template>
@@ -407,7 +439,7 @@ onMounted(() => { void initializeAndLoad(); });
     <VCard class="query-card mb-6" elevation="1">
       <VCardText>
         <form aria-label="投递查询" class="query-grid" @submit.prevent="submitQuery">
-          <div class="search-suggestion-field">
+          <div ref="searchFieldElement" class="search-suggestion-field">
             <VTextField
               v-model="search"
               name="search"
@@ -423,7 +455,8 @@ onMounted(() => { void initializeAndLoad(); });
               @keyup.enter.prevent="submitQuery"
               @keyup.esc="suggestionsOpen = false"
             />
-            <div v-if="suggestionsOpen" id="company-suggestions" class="suggestions-panel" role="listbox" aria-label="历史公司建议">
+            <Teleport to="body">
+            <div v-if="suggestionsOpen" id="company-suggestions" ref="suggestionsPanelElement" class="suggestions-panel" :style="suggestionsPanelStyle" role="listbox" aria-label="历史公司建议">
               <div v-if="suggestionLoading" class="suggestion-state" role="status">正在加载历史公司…</div>
               <div v-else-if="suggestionError" class="suggestion-state suggestion-error" role="alert">
                 <span>{{ suggestionError === "unauthorized" ? "登录状态已失效，无法加载历史公司建议。" : "历史公司建议加载失败。" }}</span>
@@ -442,6 +475,7 @@ onMounted(() => { void initializeAndLoad(); });
                 >{{ company }}</button>
               </template>
             </div>
+            </Teleport>
           </div>
           <VSelect v-model="applicationStatus" name="status" label="投递状态（可多选）" :items="statusOptions" item-title="title" item-value="value" multiple chips closable-chips clearable @update:model-value="changeStatus" />
           <DateTimeField v-model="applicationTimeAfter" name="applicationTimeAfter" label="投递时间起" clearable />
@@ -509,8 +543,8 @@ onMounted(() => { void initializeAndLoad(); });
         <tbody v-for="application in data.results" :id="`company-positions-${application.id}`" :key="application.id" class="company-group">
           <tr class="company-row">
             <td class="company-cell font-weight-medium">
-              <span>{{ application.companyName }}</span>
-              <a v-if="safeLink(application.recruitmentUrl)" class="company-recruitment-link" :href="safeLink(application.recruitmentUrl)" target="_blank" rel="noopener noreferrer">{{ application.recruitmentUrl }}</a>
+              <a v-if="safeLink(application.recruitmentUrl)" class="company-recruitment-link" :href="safeLink(application.recruitmentUrl)" target="_blank" rel="noopener noreferrer">{{ application.companyName }}</a>
+              <span v-else>{{ application.companyName }}</span>
               <span v-if="positionsOf(application).length > 1" class="position-count">{{ positionsOf(application).length }} 个岗位</span>
               <button v-if="positionsOf(application).length > 1" type="button" class="expand-company" :aria-expanded="expandedCompanies.has(application.id)" :aria-controls="`company-positions-${application.id}`" :aria-label="`${expandedCompanies.has(application.id) ? '折叠' : '展开'} ${application.companyName} 的岗位`" @click="toggleCompany(application.id)">{{ expandedCompanies.has(application.id) ? '折叠' : '展开' }}</button>
             </td>
@@ -618,7 +652,7 @@ onMounted(() => { void initializeAndLoad(); });
 .query-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; gap: 4px 16px; }
 .query-actions { display: flex; align-items: center; gap: 10px; min-height: 56px; }
 .search-suggestion-field { position: relative; min-width: 0; }
-.suggestions-panel { position: absolute; z-index: 10; top: calc(100% - 8px); right: 0; left: 0; overflow: auto; max-height: 280px; border: 1px solid #dce3f2; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .14); }
+.suggestions-panel { position: fixed; z-index: 2400; overflow: auto; max-height: 280px; border: 1px solid #dce3f2; border-radius: 8px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .14); }
 .suggestion-option { display: block; width: 100%; padding: 10px 14px; border: 0; background: transparent; color: #24375c; text-align: left; cursor: pointer; }
 .suggestion-option:hover, .suggestion-option:focus-visible { background: #eef3ff; outline: none; }
 .suggestion-state { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; color: #667085; font-size: .875rem; }
@@ -640,7 +674,7 @@ onMounted(() => { void initializeAndLoad(); });
 .expand-company:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
 .position-name { display: block; color: #24375c; font-weight: 700; }
 .position-meta, .position-link { display: inline-block; margin: 3px 10px 0 0; color: #667085; font-size: .75rem; }
-.company-recruitment-link { display: block; margin-top: 4px; color: #3157d5; font-size: .75rem; }
+.company-recruitment-link { color: #3157d5; }
 .position-link { color: #3157d5; }
 .position-notes { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #667085; font-size: .75rem; }
 .interview-flow { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 6px; margin-top: 4px; color: #475467; font-size: .75rem; }
