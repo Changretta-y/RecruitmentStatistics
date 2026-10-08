@@ -1,6 +1,6 @@
 # EXT-ROUTE-002 修复插件同公司多岗位覆盖
 
-- 状态：IMPLEMENTING
+- 状态：READY_FOR_TEST
 - 用户价值：浏览器插件录入同一公司的不同岗位时，每个岗位都能独立保存，不会因共用招聘链接而覆盖已有岗位。
 - 范围：修复插件保存前的公开匹配规则及可加载交付包；补充同公司多岗位黑盒回归。
 - 非范围：不改变后端公司聚合模型、岗位流程、认证、页面字段提取或公司招聘链接本身。
@@ -42,4 +42,5 @@
 - 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`；仅修改黑盒测试与报告，先证明 RED。
 - RED 证据：测试提交 `13ad904`；报告 `docs/test-reports/EXT-ROUTE-002-red.md`。新专项 2 项稳定失败、5 项通过，EXT-ROUTE-001 URL/hash 回归 7 项通过。
-- 实现 Agent：`company_implementation`；仅修改插件生产实现、交付包和实现说明；完成后提交 `READY_FOR_TEST`。
+- 实现 Agent：`company_implementation`；实现提交 `660787d`，说明 `docs/implementation-notes/EXT-ROUTE-002.md`；交付包新专项 7/7、EXT-ROUTE-001 URL/hash 回归 7/7、语法检查通过，现交回测试 Agent 独立复测。
+- 已知风险：APP-012 当前后端兼容 flat PATCH 对非首岗位 `application_url` 的持久化仍有限制；本任务阻止跨岗位误覆盖并避免误报成功，该后端写入能力另行建任务。
