@@ -374,9 +374,14 @@ function normalizedName(value) {
 export async function findApplicationMatch({
   company_name,
   position_name,
-  application_url,
   fetchPage,
 }) {
+  const company = normalizedName(company_name);
+  const position = normalizedName(position_name);
+  if (!company || !position) {
+    throw new Error("请填写公司名称和岗位名称后再匹配投递。");
+  }
+
   const records = [];
   let pageNumber = 1;
   while (true) {
@@ -387,26 +392,27 @@ export async function findApplicationMatch({
     if (pageNumber > 10_000) throw new Error("投递分页数量异常，已停止匹配。");
   }
 
-  const targetUrl = normalizeApplicationUrl(application_url);
-  const urlMatches = targetUrl
-    ? records.filter(
-        (record) => normalizeApplicationUrl(record.application_url) === targetUrl,
-      )
-    : [];
-  if (urlMatches.length === 1) {
-    return { kind: "update", record: urlMatches[0], matchedBy: "url" };
-  }
-  if (urlMatches.length > 1) {
-    return { kind: "ambiguous", candidates: urlMatches, matchedBy: "url" };
-  }
-
-  const company = normalizedName(company_name);
-  const position = normalizedName(position_name);
-  const nameMatches = records.filter(
-    (record) =>
-      normalizedName(record.company_name) === company &&
-      normalizedName(record.position_name) === position,
-  );
+  const nameMatches = records.flatMap((record) => {
+    if (normalizedName(record.company_name) !== company) return [];
+    const positions = Array.isArray(record.positions) && record.positions.length
+      ? record.positions
+      : [record];
+    return positions.flatMap((candidate, index) => {
+      if (normalizedName(candidate.position_name) !== position) return [];
+      const nested = candidate !== record;
+      return [{
+        ...record,
+        ...candidate,
+        id: nested ? candidate.id : record.id,
+        company_id: record.id,
+        position_index: index,
+        position_name: candidate.position_name,
+        application_url: candidate.application_url || record.application_url || "",
+        application_status: candidate.application_status || record.application_status,
+        application_time: candidate.application_time ?? record.application_time ?? null,
+      }];
+    });
+  });
   if (nameMatches.length === 1) {
     return {
       kind: "update",

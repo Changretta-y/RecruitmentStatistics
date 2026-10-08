@@ -96,8 +96,21 @@ function previewFrom(plan, confirmed) {
     operation: "update",
     matchedBy: plan.matchedBy,
     record: plan.record,
-    changes: buildPatchPayload(plan.record, confirmed),
+    changes: patchPayloadForTarget(plan.record, confirmed),
   };
+}
+
+function patchPayloadForTarget(target, confirmed) {
+  const changes = buildPatchPayload(target, confirmed);
+  if (!target.position_index) return changes;
+
+  const { application_url, company_name, ...positionChanges } = changes;
+  if (application_url !== undefined) {
+    throw new Error("平台暂不支持单独修改该岗位链接，请在主站确认后再保存。");
+  }
+  return Object.keys(positionChanges).length
+    ? { positions: [{ id: target.id, ...positionChanges }] }
+    : {};
 }
 
 async function prepareSave(rawConfirmed) {
@@ -134,11 +147,11 @@ async function confirmSave(message) {
     return { operation, record: await responseBody(response) };
   }
 
-  const payload = buildPatchPayload(target, confirmed);
+  const payload = patchPayloadForTarget(target, confirmed);
   if (Object.keys(payload).length === 0) {
     return { operation, record: target, unchanged: true };
   }
-  const response = await client.request(`/api/v1/applications/${target.id}/`, {
+  const response = await client.request(`/api/v1/applications/${target.company_id || target.id}/`, {
     method: "PATCH",
     body: JSON.stringify(payload),
   });
