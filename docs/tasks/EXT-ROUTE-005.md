@@ -1,6 +1,6 @@
 # EXT-ROUTE-005 插件入口分流与统一视觉
 
-- 状态：RED_CONFIRMED
+- 状态：READY_FOR_TEST
 - 用户价值：插件打开后先看到简洁入口，用户可选择查看投递记录或新增投递，避免所有内容一次性纵向展开。
 - 范围：插件弹窗增加入口页和两个功能入口；查看投递记录与新增投递按需显示；统一按钮、卡片、颜色、圆角、间距和字体风格。
 - 非范围：不改变已投递公司读取/搜索 API、不改变新增投递保存匹配、认证、URL/hash 或版本号。
@@ -28,4 +28,4 @@
 - 当前状态：PLANNED → TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
 - RED 证据：测试提交 `257fc8e`，报告 `docs/test-reports/EXT-ROUTE-005-red.md`；专项 7 项中 4 项稳定失败，旧记录搜索、采集保存和认证回归通过。
-- 实现 Agent：`company_implementation`，仅修改插件生产实现、交付包与说明。
+- 实现交接：提交 `b5f3ff1`，说明 `docs/implementation-notes/EXT-ROUTE-005.md`；双入口互斥视图、统一视觉、退出清理和异步导航保护完成，专项 7/7、EXT-ROUTE-004 3/3、Node check 通过，交回测试 Agent。
