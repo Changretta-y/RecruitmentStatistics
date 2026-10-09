@@ -11,6 +11,11 @@ const elements = {
   message: $("#global-message"),
   loginView: $("#login-view"),
   captureView: $("#capture-view"),
+  entryView: $("#entry-view"),
+  recordsView: $("#records-view"),
+  newApplicationView: $("#new-application-view"),
+  openRecords: $("#open-records"),
+  openApplication: $("#open-application"),
   loginForm: $("#login-form"),
   loginButton: $("#login-button"),
   apiOrigin: $("#api-origin"),
@@ -67,6 +72,8 @@ let submittedCompanies = [];
 let submittedRequestSequence = 0;
 let submittedLoading = false;
 let submittedError = null;
+let applicationInitialized = false;
+let navigationSequence = 0;
 
 function showMessage(text, kind = "info") {
   elements.message.textContent = text;
@@ -112,6 +119,13 @@ function clearSubmittedCompanies() {
   submittedError = null;
   elements.submittedSearch.value = "";
   renderSubmittedCompanies();
+}
+
+function showFeature(feature = "home") {
+  navigationSequence += 1;
+  elements.entryView.hidden = feature !== "home";
+  elements.recordsView.hidden = feature !== "records";
+  elements.newApplicationView.hidden = feature !== "application";
 }
 
 async function loadSubmittedCompanies() {
@@ -474,15 +488,17 @@ async function confirmPreview() {
 async function showAuthenticated(state) {
   currentUser = state.user;
   clearSubmittedCompanies();
+  applicationInitialized = false;
+  elements.form.reset();
+  resetPreview();
   elements.loginView.hidden = true;
   elements.captureView.hidden = false;
+  showFeature();
   elements.currentUser.textContent = currentUser?.username || "已登录用户";
   statusTouched = false;
   timeTouched = false;
   elements.status.value = "applied";
   elements.applicationTime.value = localDateTimeValue();
-  void loadSubmittedCompanies();
-  await collectPage();
 }
 
 async function initialize() {
@@ -532,7 +548,7 @@ elements.loginForm.addEventListener("submit", async (event) => {
     showMessage(error.message || "登录失败，请检查账号和密码。", "error");
   } finally {
     elements.loginButton.disabled = false;
-    elements.loginButton.textContent = "登录并开始采集";
+    elements.loginButton.textContent = "登录并继续";
   }
 });
 
@@ -540,11 +556,37 @@ elements.logoutButton.addEventListener("click", async () => {
   await send({ type: "LOGOUT" }).catch(() => undefined);
   currentUser = null;
   clearSubmittedCompanies();
+  applicationInitialized = false;
+  elements.form.reset();
+  showFeature();
   elements.captureView.hidden = true;
   elements.loginView.hidden = false;
   resetPreview();
   showMessage("已退出，插件本地登录态已清除。", "success");
 });
+
+elements.openRecords.addEventListener("click", () => {
+  showFeature("records");
+  void loadSubmittedCompanies();
+});
+elements.openApplication.addEventListener("click", async () => {
+  const activeUser = currentUser;
+  const request = ++navigationSequence;
+  if (!applicationInitialized) {
+    try {
+      await collectPage();
+    } catch (error) {
+      showMessage(error.message, "error");
+    }
+    if (activeUser !== currentUser) return;
+    applicationInitialized = true;
+  }
+  if (request !== navigationSequence) return;
+  showFeature("application");
+});
+for (const button of document.querySelectorAll("[data-back-home]")) {
+  button.addEventListener("click", () => showFeature());
+}
 
 elements.submittedSearch.addEventListener("input", renderSubmittedCompanies);
 elements.submittedRefresh.addEventListener("click", () => { void loadSubmittedCompanies(); });

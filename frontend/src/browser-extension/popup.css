@@ -1,33 +1,35 @@
 :root {
-  color: #172033;
-  background: #f4f6fb;
+  color: #182230;
+  background: #f8faff;
   font-family:
     Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
   font-synthesis: none;
 }
 
 * { box-sizing: border-box; }
-body { width: 430px; min-height: 560px; margin: 0; background: #f4f6fb; }
+body { width: 430px; max-height: 600px; margin: 0; overflow-y: auto; background: #f8faff; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 .shell { padding: 18px; }
 .brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .brand h1 { margin: 2px 0 0; font-size: 18px; line-height: 1.35; }
 .eyebrow { margin: 0; color: #6676a8; font-size: 10px; font-weight: 800; letter-spacing: .14em; }
-.brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #4f6ef7, #7357d8); font-size: 20px; }
-.panel { margin-top: 12px; padding: 16px; border: 1px solid #e3e7f1; border-radius: 16px; background: #fff; box-shadow: 0 8px 28px rgb(32 50 90 / 7%); }
+.brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 10px; color: #fff; background: #3157d5; font-size: 20px; }
+.panel { margin-top: 12px; padding: 16px; border: 1px solid #dce3f2; border-radius: 12px; background: #fff; box-shadow: 0 8px 24px rgb(16 24 40 / 8%); }
 .section-heading h2 { margin: 0; font-size: 15px; }
 .section-heading p { margin: 5px 0 0; color: #768096; font-size: 12px; line-height: 1.5; }
 .form-stack { display: grid; gap: 12px; margin-top: 14px; }
 label { display: grid; gap: 6px; color: #3c465c; font-size: 12px; font-weight: 700; }
 label small { margin-left: 5px; color: #7d88a1; font-weight: 600; }
-input, select { min-width: 0; width: 100%; height: 38px; padding: 0 11px; border: 1px solid #d9dfeb; border-radius: 10px; outline: none; color: #172033; background: #fff; }
-input:focus, select:focus { border-color: #5b72e7; box-shadow: 0 0 0 3px rgb(91 114 231 / 13%); }
-.primary, .secondary { min-height: 38px; border: 0; border-radius: 10px; font-weight: 800; }
-.primary { width: 100%; padding: 0 15px; color: #fff; background: #526ee8; box-shadow: 0 6px 16px rgb(82 110 232 / 22%); }
-.primary:hover { background: #435ed4; }
+input, select { min-width: 0; width: 100%; height: 38px; padding: 0 11px; border: 1px solid #cfd7e6; border-radius: 8px; outline: none; color: #182230; background: #fff; }
+input:focus, select:focus { border-color: #3157d5; box-shadow: 0 0 0 3px rgb(49 87 213 / 14%); }
+.primary, .secondary { min-height: 38px; border: 0; border-radius: 8px; font-weight: 700; }
+.primary { width: 100%; padding: 0 15px; color: #fff; background: #3157d5; box-shadow: 0 5px 14px rgb(49 87 213 / 18%); }
+.primary:hover { background: #2548bb; }
 .primary:disabled { cursor: wait; opacity: .58; }
-.secondary { padding: 0 11px; color: #4258bc; background: #edf0ff; }
+.secondary { padding: 0 11px; color: #3157d5; background: #eef3ff; }
+.secondary:hover { background: #e1e9ff; }
+button:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
 .compact { white-space: nowrap; }
 .input-action { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
 .grid-two { display: grid; grid-template-columns: .85fr 1.15fr; gap: 9px; }
@@ -35,8 +37,14 @@ input:focus, select:focus { border-color: #5b72e7; box-shadow: 0 0 0 3px rgb(91 
 .account-row strong { display: block; margin-top: 2px; font-size: 14px; }
 .muted { color: #7e879a; font-size: 11px; }
 .row-actions { display: flex; gap: 10px; }
-.text-button { padding: 4px 0; border: 0; color: #526ee8; background: transparent; font-size: 12px; font-weight: 700; }
+.text-button { padding: 4px 0; border: 0; border-radius: 4px; color: #3157d5; background: transparent; font-size: 12px; font-weight: 700; }
+.text-button:hover { color: #2548bb; text-decoration: underline; }
 .text-button.danger { color: #c94b5d; }
+.entry-actions { display: grid; gap: 10px; margin-top: 16px; }
+.entry-button { min-height: 52px; text-align: left; font-size: 14px; }
+.feature-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
+.back-button { margin-top: 12px; }
+.feature-toolbar .back-button { margin-top: 0; }
 .message { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; color: #22436b; background: #eaf3ff; font-size: 12px; line-height: 1.5; }
 .message.error { color: #8f2f3c; background: #ffebee; }
 .message.success { color: #17613d; background: #e7f7ee; }

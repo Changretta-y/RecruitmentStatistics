@@ -40,7 +40,7 @@
             <span>密码</span>
             <input id="password" type="password" autocomplete="current-password" required />
           </label>
-          <button id="login-button" class="primary" type="submit">登录并开始采集</button>
+          <button id="login-button" class="primary" type="submit">登录并继续</button>
         </form>
         <p class="security-note">密码不会保存。当前线上接口为 HTTP，正式公开使用前建议配置 HTTPS。</p>
       </section>
@@ -52,11 +52,23 @@
             <strong id="current-user">-</strong>
           </div>
           <div class="row-actions">
-            <button id="recapture-button" class="text-button" type="button">重新采集</button>
             <button id="logout-button" class="text-button danger" type="button">退出</button>
           </div>
         </div>
 
+        <section id="entry-view" class="panel entry-panel">
+          <div class="section-heading">
+            <h2>选择操作</h2>
+            <p>查看已有投递，或从当前页面新增投递。</p>
+          </div>
+          <div class="entry-actions">
+            <button id="open-records" class="primary entry-button" type="button">查看投递记录</button>
+            <button id="open-application" class="primary entry-button" type="button">新增投递</button>
+          </div>
+        </section>
+
+        <div id="records-view" hidden>
+          <button class="text-button back-button" data-back-home type="button">← 返回入口</button>
         <section class="panel submitted-panel" aria-labelledby="submitted-heading">
           <div class="section-heading submitted-heading">
             <div>
@@ -73,7 +85,13 @@
           <button id="submitted-retry" class="secondary submitted-retry" type="button" hidden>重试</button>
           <ul id="submitted-list" class="submitted-list"></ul>
         </section>
+        </div>
 
+        <div id="new-application-view" hidden>
+          <div class="feature-toolbar">
+            <button class="text-button back-button" data-back-home type="button">← 返回入口</button>
+            <button id="recapture-button" class="text-button" type="button">重新采集</button>
+          </div>
         <section class="panel capture-panel">
           <div class="section-heading">
             <h2>当前投递</h2>
@@ -135,6 +153,7 @@
           </label>
           <button id="confirm-button" class="primary" type="button">确认写入</button>
         </section>
+        </div>
       </section>
     </main>
     <script type="module" src="popup.js"></script>
