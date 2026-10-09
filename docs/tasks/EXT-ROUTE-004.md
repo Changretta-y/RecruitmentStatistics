@@ -1,6 +1,6 @@
 # EXT-ROUTE-004 升级浏览器插件版本号
 
-- 状态：RED_CONFIRMED
+- 状态：READY_FOR_TEST
 - 用户价值：浏览器能够识别插件功能更新，用户重新加载/更新时不会继续看到旧的 `0.1.0` 版本。
 - 范围：将插件 manifest、构建产物文件名和使用说明统一升级到 `0.2.0`，重新生成可加载 ZIP。
 - 非范围：不改变插件业务逻辑、权限、API、采集和保存行为。
@@ -23,4 +23,4 @@
 - 当前状态：PLANNED → TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`；仅修改黑盒测试与报告。
 - RED 证据：测试提交 `7af46e4`，报告 `docs/test-reports/EXT-ROUTE-004-red.md`；ZIP 文件名和包内 manifest 版本均为旧 `0.1.0`，登录采集回归通过。
-- 实现 Agent：`company_implementation`；仅修改版本相关生产文件、构建产物和说明。
+- 实现交接：提交 `361fb68`，说明 `docs/implementation-notes/EXT-ROUTE-004.md`；manifest/README/构建脚本统一 `0.2.0`，新 ZIP SHA `C67185D84D3692472533FFDC2DB8D3BB4574D969616E6D061B13B4C09F915D91`，Node check、确定性构建和专项 3/3 通过，交回测试 Agent。
