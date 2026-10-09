@@ -57,6 +57,23 @@
           </div>
         </div>
 
+        <section class="panel submitted-panel" aria-labelledby="submitted-heading">
+          <div class="section-heading submitted-heading">
+            <div>
+              <h2 id="submitted-heading">已投递公司</h2>
+              <p id="submitted-count"></p>
+            </div>
+            <button id="submitted-refresh" class="text-button" type="button">刷新</button>
+          </div>
+          <label class="submitted-search">
+            <span>搜索公司或岗位</span>
+            <input id="submitted-search" type="search" placeholder="搜索公司或岗位" autocomplete="off" />
+          </label>
+          <p id="submitted-state" class="submitted-state" role="status"></p>
+          <button id="submitted-retry" class="secondary submitted-retry" type="button" hidden>重试</button>
+          <ul id="submitted-list" class="submitted-list"></ul>
+        </section>
+
         <section class="panel capture-panel">
           <div class="section-heading">
             <h2>当前投递</h2>

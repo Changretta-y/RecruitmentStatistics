@@ -46,7 +46,6 @@ export function normalizeApplicationUrl(value) {
 
   try {
     const url = new URL(raw);
-    url.hash = "";
     for (const key of [...url.searchParams.keys()]) {
       const normalizedKey = key.toLowerCase();
       if (normalizedKey.startsWith("utm_") || TRACKING_PARAMETERS.has(normalizedKey)) {
@@ -55,7 +54,7 @@ export function normalizeApplicationUrl(value) {
     }
     return url.toString();
   } catch {
-    return raw.split("#", 1)[0];
+    return raw;
   }
 }
 

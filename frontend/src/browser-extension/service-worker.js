@@ -77,6 +77,37 @@ async function matchApplications(client, confirmed) {
   });
 }
 
+async function listSubmittedCompanies() {
+  const client = await authClient();
+  const companies = new Map();
+  let pageNumber = 1;
+  while (true) {
+    const response = await client.request(
+      `/api/v1/applications/?page=${pageNumber}&page_size=100`,
+    );
+    const page = await responseBody(response);
+    for (const application of Array.isArray(page?.results) ? page.results : []) {
+      const name = String(application.company_name || application.company?.company_name || "").trim();
+      if (!name) continue;
+      const key = application.company_id != null
+        ? `id:${application.company_id}`
+        : `name:${name.toLocaleLowerCase()}`;
+      if (!companies.has(key)) companies.set(key, { companyName: name, positions: [] });
+      const entry = companies.get(key);
+      const positions = Array.isArray(application.positions)
+        ? application.positions
+        : [{ position_name: application.position_name }];
+      for (const position of positions) {
+        const positionName = String(position?.position_name || "").trim();
+        if (positionName) entry.positions.push(positionName);
+      }
+    }
+    if (!page?.next && !(Number(page?.total_pages) > pageNumber)) break;
+    pageNumber += 1;
+  }
+  return [...companies.values()];
+}
+
 function previewFrom(plan, confirmed) {
   if (plan.kind === "create") {
     return {
@@ -191,6 +222,8 @@ async function handleMessage(message, sender) {
       }
       return { user };
     }
+    case "LIST_SUBMITTED_COMPANIES":
+      return listSubmittedCompanies();
     case "LOGOUT": {
       const auth = await storage.get("auth");
       try {

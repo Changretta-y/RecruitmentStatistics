@@ -18,6 +18,12 @@ const elements = {
   password: $("#password"),
   currentUser: $("#current-user"),
   logoutButton: $("#logout-button"),
+  submittedCount: $("#submitted-count"),
+  submittedSearch: $("#submitted-search"),
+  submittedRefresh: $("#submitted-refresh"),
+  submittedState: $("#submitted-state"),
+  submittedRetry: $("#submitted-retry"),
+  submittedList: $("#submitted-list"),
   recaptureButton: $("#recapture-button"),
   pageState: $("#page-state"),
   form: $("#application-form"),
@@ -57,11 +63,81 @@ let currentPreview = null;
 let saveGate = null;
 let statusTouched = false;
 let timeTouched = false;
+let submittedCompanies = [];
+let submittedRequestSequence = 0;
+let submittedLoading = false;
+let submittedError = null;
 
 function showMessage(text, kind = "info") {
   elements.message.textContent = text;
   elements.message.className = `message ${kind}`;
   elements.message.hidden = !text;
+}
+
+function renderSubmittedCompanies() {
+  const query = elements.submittedSearch.value.trim().toLocaleLowerCase();
+  const matching = submittedCompanies.filter((company) =>
+    company.companyName.toLocaleLowerCase().includes(query)
+    || company.positions.some((position) => position.toLocaleLowerCase().includes(query)));
+  elements.submittedCount.textContent = `共 ${matching.length} 家公司`;
+  elements.submittedList.replaceChildren();
+  for (const company of matching) {
+    const item = document.createElement("li");
+    item.className = "submitted-company";
+    const name = document.createElement("strong");
+    name.textContent = company.companyName;
+    item.append(name);
+    const positions = document.createElement("ul");
+    positions.className = "submitted-positions";
+    for (const positionName of company.positions) {
+      const position = document.createElement("li");
+      position.textContent = positionName;
+      positions.append(position);
+    }
+    item.append(positions);
+    elements.submittedList.append(item);
+  }
+  elements.submittedState.textContent = submittedError
+    || (submittedLoading ? "正在加载已投递公司…"
+      : matching.length ? ""
+        : query && submittedCompanies.length ? "没有匹配结果" : "暂无已投递公司");
+  elements.submittedRetry.hidden = !submittedError || /重新登录/.test(submittedError);
+  elements.submittedRefresh.disabled = submittedLoading;
+}
+
+function clearSubmittedCompanies() {
+  submittedRequestSequence += 1;
+  submittedCompanies = [];
+  submittedLoading = false;
+  submittedError = null;
+  elements.submittedSearch.value = "";
+  renderSubmittedCompanies();
+}
+
+async function loadSubmittedCompanies() {
+  if (!currentUser) return;
+  const sequence = ++submittedRequestSequence;
+  submittedLoading = true;
+  submittedError = null;
+  renderSubmittedCompanies();
+  try {
+    const companies = await send({ type: "LIST_SUBMITTED_COMPANIES" });
+    if (sequence !== submittedRequestSequence) return;
+    submittedCompanies = Array.isArray(companies) ? companies : [];
+  } catch (error) {
+    if (sequence !== submittedRequestSequence) return;
+    if (/登录|认证|token|401/i.test(error.message || "")) {
+      submittedCompanies = [];
+      submittedError = "登录已过期，请重新登录。";
+    } else {
+      submittedError = "网络加载失败，请重试。";
+    }
+  } finally {
+    if (sequence === submittedRequestSequence) {
+      submittedLoading = false;
+      renderSubmittedCompanies();
+    }
+  }
 }
 
 async function send(message) {
@@ -397,6 +473,7 @@ async function confirmPreview() {
 
 async function showAuthenticated(state) {
   currentUser = state.user;
+  clearSubmittedCompanies();
   elements.loginView.hidden = true;
   elements.captureView.hidden = false;
   elements.currentUser.textContent = currentUser?.username || "已登录用户";
@@ -404,6 +481,7 @@ async function showAuthenticated(state) {
   timeTouched = false;
   elements.status.value = "applied";
   elements.applicationTime.value = localDateTimeValue();
+  void loadSubmittedCompanies();
   await collectPage();
 }
 
@@ -461,11 +539,16 @@ elements.loginForm.addEventListener("submit", async (event) => {
 elements.logoutButton.addEventListener("click", async () => {
   await send({ type: "LOGOUT" }).catch(() => undefined);
   currentUser = null;
+  clearSubmittedCompanies();
   elements.captureView.hidden = true;
   elements.loginView.hidden = false;
   resetPreview();
   showMessage("已退出，插件本地登录态已清除。", "success");
 });
+
+elements.submittedSearch.addEventListener("input", renderSubmittedCompanies);
+elements.submittedRefresh.addEventListener("click", () => { void loadSubmittedCompanies(); });
+elements.submittedRetry.addEventListener("click", () => { void loadSubmittedCompanies(); });
 
 elements.recaptureButton.addEventListener("click", () => {
   statusTouched = false;

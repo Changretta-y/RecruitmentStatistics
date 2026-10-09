@@ -47,4 +47,13 @@ input:focus, select:focus { border-color: #5b72e7; box-shadow: 0 0 0 3px rgb(91 
 .preview-details dt { color: #7b8498; }
 .preview-details dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: #28344c; font-weight: 700; }
 .security-note { margin: 12px 2px 0; color: #8a6b2f; font-size: 11px; line-height: 1.5; }
+.submitted-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.submitted-search { margin-top: 12px; }
+.submitted-state { margin: 12px 0 0; color: #6f7890; font-size: 12px; }
+.submitted-retry { min-height: 30px; margin-top: 8px; }
+.submitted-list { display: grid; gap: 8px; max-height: 180px; overflow: auto; margin: 12px 0 0; padding: 0; list-style: none; }
+.submitted-company { padding: 9px 11px; border-radius: 10px; background: #f4f6fb; }
+.submitted-company strong { font-size: 12px; }
+.submitted-positions { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 0; padding: 0; list-style: none; }
+.submitted-positions li { padding: 3px 6px; border-radius: 5px; background: #e8edfa; color: #415275; font-size: 11px; }
 [hidden] { display: none !important; }
