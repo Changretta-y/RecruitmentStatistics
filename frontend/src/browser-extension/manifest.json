@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "我的投递采集助手",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "从当前网申页面提取公司和岗位，经确认后同步到我的投递进度。",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [

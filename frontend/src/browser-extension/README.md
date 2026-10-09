@@ -11,7 +11,7 @@ Chrome / Microsoft Edge Manifest V3 扩展。用户主动打开扩展后，它�
 
 扩展默认连接平台入口 `http://115.190.240.84:5173`，认证与投递记录请求均通过该 origin 下的 `/api/v1/` 反向代理。开发时也可选择 `http://127.0.0.1:5173` 或 `http://localhost:5173`。
 
-从仓库根目录执行 `npm run build:extension`，可从 `frontend/src/browser-extension/` 生成 `artifacts/recruitment-capture-extension-v0.1.0.zip`。ZIP 仅包含浏览器加载所需文件。
+从仓库根目录执行 `npm run build:extension`，可从 `frontend/src/browser-extension/` 生成 `artifacts/recruitment-capture-extension-v0.2.0.zip`。ZIP 仅包含浏览器加载所需文件。
 
 ## 权限说明
 

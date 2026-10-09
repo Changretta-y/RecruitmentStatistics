@@ -8,7 +8,7 @@ const sourceRoot = path.join(repoRoot, "frontend", "src", "browser-extension");
 const outputPath = path.join(
   repoRoot,
   "artifacts",
-  "recruitment-capture-extension-v0.1.0.zip",
+  "recruitment-capture-extension-v0.2.0.zip",
 );
 const runtimeFiles = [
   "core.js",
