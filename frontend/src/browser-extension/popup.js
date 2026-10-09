@@ -11,7 +11,6 @@ const elements = {
   message: $("#global-message"),
   loginView: $("#login-view"),
   captureView: $("#capture-view"),
-  entryView: $("#entry-view"),
   recordsView: $("#records-view"),
   newApplicationView: $("#new-application-view"),
   openRecords: $("#open-records"),
@@ -121,11 +120,17 @@ function clearSubmittedCompanies() {
   renderSubmittedCompanies();
 }
 
-function showFeature(feature = "home") {
+function showFeature(feature = "application") {
   navigationSequence += 1;
-  elements.entryView.hidden = feature !== "home";
   elements.recordsView.hidden = feature !== "records";
   elements.newApplicationView.hidden = feature !== "application";
+  for (const [button, selected] of [
+    [elements.openRecords, feature === "records"],
+    [elements.openApplication, feature === "application"],
+  ]) {
+    button.classList.toggle("is-active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  }
 }
 
 async function loadSubmittedCompanies() {
@@ -491,14 +496,20 @@ async function showAuthenticated(state) {
   applicationInitialized = false;
   elements.form.reset();
   resetPreview();
-  elements.loginView.hidden = true;
-  elements.captureView.hidden = false;
   showFeature();
   elements.currentUser.textContent = currentUser?.username || "已登录用户";
   statusTouched = false;
   timeTouched = false;
   elements.status.value = "applied";
   elements.applicationTime.value = localDateTimeValue();
+  try {
+    await collectPage();
+  } catch (error) {
+    showMessage(error.message, "error");
+  }
+  applicationInitialized = true;
+  elements.loginView.hidden = true;
+  elements.captureView.hidden = false;
 }
 
 async function initialize() {
@@ -584,10 +595,6 @@ elements.openApplication.addEventListener("click", async () => {
   if (request !== navigationSequence) return;
   showFeature("application");
 });
-for (const button of document.querySelectorAll("[data-back-home]")) {
-  button.addEventListener("click", () => showFeature());
-}
-
 elements.submittedSearch.addEventListener("input", renderSubmittedCompanies);
 elements.submittedRefresh.addEventListener("click", () => { void loadSubmittedCompanies(); });
 elements.submittedRetry.addEventListener("click", () => { void loadSubmittedCompanies(); });

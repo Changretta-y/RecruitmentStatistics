@@ -40,11 +40,12 @@ button:focus-visible { outline: 2px solid #3157d5; outline-offset: 3px; }
 .text-button { padding: 4px 0; border: 0; border-radius: 4px; color: #3157d5; background: transparent; font-size: 12px; font-weight: 700; }
 .text-button:hover { color: #2548bb; text-decoration: underline; }
 .text-button.danger { color: #c94b5d; }
-.entry-actions { display: grid; gap: 10px; margin-top: 16px; }
-.entry-button { min-height: 52px; text-align: left; font-size: 14px; }
-.feature-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-.back-button { margin-top: 12px; }
-.feature-toolbar .back-button { margin-top: 0; }
+.feature-nav { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; padding: 10px 0; background: #f8faff; }
+.feature-tab { min-height: 42px; padding: 0 10px; border: 1px solid #cfd7e6; border-radius: 8px; color: #3157d5; background: #fff; font-weight: 700; }
+.feature-tab:hover { border-color: #3157d5; background: #eef3ff; }
+.feature-tab.is-active { border-color: #3157d5; color: #fff; background: #3157d5; box-shadow: 0 5px 14px rgb(49 87 213 / 18%); }
+.feature-tab.is-active:hover { background: #2548bb; }
+.feature-toolbar { display: flex; justify-content: flex-end; align-items: center; margin-top: 6px; }
 .message { margin-bottom: 12px; padding: 10px 12px; border-radius: 10px; color: #22436b; background: #eaf3ff; font-size: 12px; line-height: 1.5; }
 .message.error { color: #8f2f3c; background: #ffebee; }
 .message.success { color: #17613d; background: #e7f7ee; }

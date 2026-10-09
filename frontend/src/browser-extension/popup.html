@@ -56,19 +56,12 @@
           </div>
         </div>
 
-        <section id="entry-view" class="panel entry-panel">
-          <div class="section-heading">
-            <h2>选择操作</h2>
-            <p>查看已有投递，或从当前页面新增投递。</p>
-          </div>
-          <div class="entry-actions">
-            <button id="open-records" class="primary entry-button" type="button">查看投递记录</button>
-            <button id="open-application" class="primary entry-button" type="button">新增投递</button>
-          </div>
-        </section>
+        <nav class="feature-nav" aria-label="插件功能">
+          <button id="open-records" class="feature-tab" type="button" aria-pressed="false">查看投递记录</button>
+          <button id="open-application" class="feature-tab is-active" type="button" aria-pressed="true">新增投递</button>
+        </nav>
 
         <div id="records-view" hidden>
-          <button class="text-button back-button" data-back-home type="button">← 返回入口</button>
         <section class="panel submitted-panel" aria-labelledby="submitted-heading">
           <div class="section-heading submitted-heading">
             <div>
@@ -89,7 +82,6 @@
 
         <div id="new-application-view" hidden>
           <div class="feature-toolbar">
-            <button class="text-button back-button" data-back-home type="button">← 返回入口</button>
             <button id="recapture-button" class="text-button" type="button">重新采集</button>
           </div>
         <section class="panel capture-panel">
