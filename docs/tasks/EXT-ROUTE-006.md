@@ -1,6 +1,6 @@
 # EXT-ROUTE-006 插件顶部双按钮默认新增投递
 
-- 状态：PLANNED
+- 状态：RED_CONFIRMED
 - 用户价值：打开插件即可直接新增投递，同时可用顶部按钮快速切换查看记录，减少返回入口和额外操作。
 - 范围：调整插件登录后的导航栏和默认视图；顶部固定“查看投递记录”“新增投递”两个按钮，默认显示新增投递，移除返回入口。
 - 非范围：不改变记录搜索、采集保存、认证、版本号、URL/hash 和 API 数据行为。
@@ -24,6 +24,7 @@
 
 ## Agent 交接
 
-- 当前状态：PLANNED → TEST_WRITING。
+- 当前状态：PLANNED → TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
+- RED 证据：测试提交 `445cd04`，报告 `docs/test-reports/EXT-ROUTE-006-red.md`；新专项 5 项中 3 项稳定失败，旧 EXT-ROUTE-005 回归 7/7 通过。
 - 实现 Agent：`company_implementation`，仅修改插件生产实现、交付包与说明。
