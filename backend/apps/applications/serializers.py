@@ -530,8 +530,11 @@ class JobApplicationSerializer(LegacyJobApplicationSerializer):
         if not legacy_name:
             raise serializers.ValidationError({'company_name': ['该字段必填。']})
         normalized = normalize_company_name(legacy_name)
-        company = Company.objects.filter(normalized_name=normalized).first()
+        company = Company.objects.select_for_update().filter(normalized_name=normalized).first()
         if company is not None:
+            if legacy_url and not company.recruitment_url:
+                company.recruitment_url = legacy_url
+                company.save(update_fields=['recruitment_url', 'updated_at'])
             return company
         return Company.objects.create(
             company_name=legacy_name,
