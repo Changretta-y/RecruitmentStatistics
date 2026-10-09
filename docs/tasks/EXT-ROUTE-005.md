@@ -1,6 +1,6 @@
 # EXT-ROUTE-005 插件入口分流与统一视觉
 
-- 状态：READY_FOR_TEST
+- 状态：DONE
 - 用户价值：插件打开后先看到简洁入口，用户可选择查看投递记录或新增投递，避免所有内容一次性纵向展开。
 - 范围：插件弹窗增加入口页和两个功能入口；查看投递记录与新增投递按需显示；统一按钮、卡片、颜色、圆角、间距和字体风格。
 - 非范围：不改变已投递公司读取/搜索 API、不改变新增投递保存匹配、认证、URL/hash 或版本号。
@@ -29,3 +29,16 @@
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
 - RED 证据：测试提交 `257fc8e`，报告 `docs/test-reports/EXT-ROUTE-005-red.md`；专项 7 项中 4 项稳定失败，旧记录搜索、采集保存和认证回归通过。
 - 实现交接：提交 `b5f3ff1`，说明 `docs/implementation-notes/EXT-ROUTE-005.md`；双入口互斥视图、统一视觉、退出清理和异步导航保护完成，专项 7/7、EXT-ROUTE-004 3/3、Node check 通过，交回测试 Agent。
+
+## 2026-10-09 PM 验收结果
+
+- 状态：DONE。
+- RED 报告：`docs/test-reports/EXT-ROUTE-005-red.md`，提交 `257fc8e`。
+- 实现说明：`docs/implementation-notes/EXT-ROUTE-005.md`，提交 `b5f3ff1`。
+- 独立通过报告：`docs/test-reports/EXT-ROUTE-005-passed.md`，提交 `5e160ec`。
+- [x] 登录后默认只有“查看投递记录”“新增投递”两个入口。
+- [x] 两个功能按需互斥显示，可返回入口并保留登录态，退出后清理。
+- [x] 记录搜索、采集预览/POST、认证和 v0.2.0 版本回归通过；专项合计 10/10。
+- [x] 视觉使用本地 CSS 的主站蓝色、白卡片、边框圆角、hover/focus 状态，无远程依赖。
+
+结论：入口分流和统一视觉契约满足，项目管理 Agent 设置 EXT-ROUTE-005 为 DONE。
