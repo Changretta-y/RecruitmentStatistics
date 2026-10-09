@@ -1,6 +1,6 @@
 # EXT-ROUTE-006 插件顶部双按钮默认新增投递
 
-- 状态：READY_FOR_TEST
+- 状态：DONE
 - 用户价值：打开插件即可直接新增投递，同时可用顶部按钮快速切换查看记录，减少返回入口和额外操作。
 - 范围：调整插件登录后的导航栏和默认视图；顶部固定“查看投递记录”“新增投递”两个按钮，默认显示新增投递，移除返回入口。
 - 非范围：不改变记录搜索、采集保存、认证、版本号、URL/hash 和 API 数据行为。
@@ -28,3 +28,15 @@
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
 - RED 证据：测试提交 `445cd04`，报告 `docs/test-reports/EXT-ROUTE-006-red.md`；新专项 5 项中 3 项稳定失败，旧 EXT-ROUTE-005 回归 7/7 通过。
 - 实现交接：提交 `f3e8593`，说明 `docs/implementation-notes/EXT-ROUTE-006.md`；默认新增、顶部双按钮互斥切换、移除返回和选中态完成，006 5/5、适用回归 6/6、Node/build 通过，交回测试 Agent。
+
+## 2026-10-09 PM 验收结果
+
+- 状态：DONE。
+- RED 报告：`docs/test-reports/EXT-ROUTE-006-red.md`，提交 `445cd04`。
+- 实现说明：`docs/implementation-notes/EXT-ROUTE-006.md`，提交 `f3e8593`。
+- 独立通过报告：`docs/test-reports/EXT-ROUTE-006-passed.md`，提交 `12678c1`。
+- [x] 登录后默认直接显示新增投递采集表单。
+- [x] 顶部固定两个按钮，可直接切换查看记录/新增投递；无返回入口，选中态可见。
+- [x] 新专项及适用回归合计 11/11，退出清理、保存、搜索和认证行为通过。
+
+结论：默认新增与顶部导航契约满足，项目管理 Agent 设置 EXT-ROUTE-006 为 DONE。
