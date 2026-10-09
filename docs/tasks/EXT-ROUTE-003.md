@@ -1,6 +1,6 @@
 # EXT-ROUTE-003 插件查看与搜索已投递公司
 
-- 状态：READY_FOR_TEST
+- 状态：DONE
 - 用户价值：用户在浏览器插件录入当前投递前，可以查看并搜索自己已经投递过的公司及岗位，避免重复投递或误更新。
 - 范围：插件登录后的已投递公司列表、公司名搜索、岗位摘要、刷新与加载/错误状态；复用当前用户应用列表 API。
 - 非范围：不读取其他用户或共享页面数据，不改变保存匹配规则、后端数据模型、主站搜索、公司目录或插件页面采集逻辑。
@@ -42,3 +42,15 @@
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告，先形成 RED。
 - RED 证据：测试提交 `4ebb285`，报告 `docs/test-reports/EXT-ROUTE-003-red.md`；专项 7 项中 6 项稳定失败，未登录不读取 1 项通过，EXT-ROUTE-001/002 回归通过。
 - 实现交接：提交 `9a0163d`，说明 `docs/implementation-notes/EXT-ROUTE-003.md`；专项 7/7、EXT-ROUTE-001/002 各 7/7、Node check 通过，交回测试 Agent 独立复测。
+
+## 2026-10-09 PM 验收结果
+
+- 状态：DONE。
+- RED 报告：`docs/test-reports/EXT-ROUTE-003-red.md`，提交 `4ebb285`。
+- 实现说明：`docs/implementation-notes/EXT-ROUTE-003.md`，提交 `9a0163d`。
+- 独立通过报告：`docs/test-reports/EXT-ROUTE-003-passed.md`，提交 `d41baca`。
+- [x] 登录后显示当前用户已投递公司及岗位，跨页重复公司已聚合去重。
+- [x] 公司名/岗位名搜索、刷新、空结果、401、网络重试和退出清理均通过。
+- [x] 新专项 7/7，EXT-ROUTE-001/002 各 7/7，采集表单保持正常。
+
+结论：插件查看与搜索已投递公司契约全部满足，项目管理 Agent 设置 EXT-ROUTE-003 为 DONE。
