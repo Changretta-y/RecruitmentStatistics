@@ -1,0 +1,25 @@
+# EXT-ROUTE-004 升级浏览器插件版本号
+
+- 状态：PLANNED
+- 用户价值：浏览器能够识别插件功能更新，用户重新加载/更新时不会继续看到旧的 `0.1.0` 版本。
+- 范围：将插件 manifest、构建产物文件名和使用说明统一升级到 `0.2.0`，重新生成可加载 ZIP。
+- 非范围：不改变插件业务逻辑、权限、API、采集和保存行为。
+- 允许修改范围：项目管理仅 `docs/tasks/`、`docs/acceptance/`；测试仅 `tests/e2e/`、`docs/test-reports/`；实现仅 `frontend/src/browser-extension/manifest.json`、`frontend/src/browser-extension/README.md`、`scripts/build-extension.mjs`、生成的 `artifacts/`、`docs/implementation-notes/`。
+
+## 公开契约
+
+- manifest `version` 为 `0.2.0`。
+- 构建入口生成 `artifacts/recruitment-capture-extension-v0.2.0.zip`，包内 manifest 版本同为 `0.2.0`。
+- 旧业务行为与现有插件回归不变。
+
+## 验收标准
+
+- [ ] 源码 manifest、构建脚本、README 和 ZIP 文件名统一为 `0.2.0`。
+- [ ] 可加载 ZIP 包内版本为 `0.2.0`，且既有插件专项回归通过。
+- [ ] 测试 Agent 先 RED，实现 Agent READY_FOR_TEST，测试 Agent TEST_PASSED，PM 验收 DONE。
+
+## Agent 交接
+
+- 当前状态：PLANNED → TEST_WRITING。
+- 测试 Agent：`company_tests`；仅修改黑盒测试与报告。
+- 实现 Agent：`company_implementation`；仅修改版本相关生产文件、构建产物和说明。
