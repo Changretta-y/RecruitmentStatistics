@@ -8,6 +8,9 @@ pipeline {
     }
 
     triggers {
+        // Start builds immediately when GitHub delivers a push event.  Keep
+        // SCM polling as a fallback for missed webhook deliveries.
+        githubPush()
         pollSCM('H/5 * * * *')
     }
 
