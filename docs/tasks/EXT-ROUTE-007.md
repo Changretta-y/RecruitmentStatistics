@@ -1,6 +1,6 @@
 # EXT-ROUTE-007 插件使用平台 Logo 图标
 
-- 状态：RED_CONFIRMED
+- 状态：DONE
 - 用户价值：浏览器工具栏和扩展管理页能直接识别平台品牌，不再使用默认拼图图标。
 - 范围：将平台 `frontend/public/logo.png` 作为扩展图标加入插件包，更新 Manifest 的扩展图标和 action 图标配置，保持版本号 `0.2.0`。
 - 非范围：不改变插件弹窗布局、采集、记录搜索、认证和保存逻辑；不重绘或压缩平台 Logo。
@@ -28,7 +28,10 @@
 
 ## Agent 交接
 
-- 当前状态：RED_CONFIRMED → IMPLEMENTING → READY_FOR_TEST。
+- 当前状态：READY_FOR_TEST → TEST_PASSED → ACCEPTING → DONE。
+
+- 复测提交：`3d6a254`
+- 复测报告：`docs/test-reports/EXT-ROUTE-007-passed.md`
 
 - 实现提交：`5000877`
 - 实现说明：`docs/implementation-notes/EXT-ROUTE-007.md`
