@@ -5,10 +5,13 @@ description = "Backend service for the campus recruitment progress management sy
 requires-python = ">=3.11"
 dependencies = [
     "django",
+    "django-oauth-toolkit>=3.4",
     "djangorestframework",
     "djangorestframework-simplejwt",
     "drf-spectacular>=0.30.0",
+    "mcp>=2.0.0",
     "psycopg[binary]",
+    "uvicorn>=0.35.0",
 ]
 
 [dependency-groups]

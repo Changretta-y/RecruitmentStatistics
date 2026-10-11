@@ -51,11 +51,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "oauth2_provider",
     "rest_framework",
     "drf_spectacular",
     "rest_framework_simplejwt.token_blacklist",
     "backend.apps.accounts",
     "backend.apps.applications",
+    "backend.apps.mcp",
     "backend.apps.calendar_events",
     "backend.apps.notifications",
     "backend.apps.health",
@@ -179,6 +181,66 @@ DEFAULT_FROM_EMAIL = os.environ.get(
 ).strip()
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "").rstrip("/")
 
+# MCP is deliberately configured with an explicit public origin.  OAuth
+# issuers and RFC 8707 resource indicators are exact strings, so deriving
+# these values from an arbitrary reverse-proxy request would make discovery
+# and audience validation depend on the proxy headers received by one call.
+MCP_PUBLIC_BASE_URL = os.environ.get(
+    "MCP_PUBLIC_BASE_URL", FRONTEND_BASE_URL or "https://testserver"
+).rstrip("/")
+MCP_AUTHORIZATION_ISSUER = os.environ.get(
+    "MCP_AUTHORIZATION_ISSUER", MCP_PUBLIC_BASE_URL
+).rstrip("/")
+MCP_ENDPOINT = os.environ.get("MCP_ENDPOINT", "/mcp").strip() or "/mcp"
+if not MCP_ENDPOINT.startswith("/") or MCP_ENDPOINT.endswith("/"):
+    raise ImproperlyConfigured("MCP_ENDPOINT must be an absolute path without a trailing slash")
+MCP_RESOURCE_URI = os.environ.get(
+    "MCP_RESOURCE_URI", f"{MCP_PUBLIC_BASE_URL}{MCP_ENDPOINT}"
+).rstrip("/")
+try:
+    MCP_PROPOSAL_TTL_SECONDS = int(os.environ.get("MCP_PROPOSAL_TTL_SECONDS", "600"))
+except ValueError as exc:
+    raise ImproperlyConfigured("MCP_PROPOSAL_TTL_SECONDS must be an integer") from exc
+if not 60 <= MCP_PROPOSAL_TTL_SECONDS <= 900:
+    raise ImproperlyConfigured("MCP_PROPOSAL_TTL_SECONDS must be between 60 and 900 seconds")
+# These two switches are deliberately not part of the production configuration
+# surface.  They are useful for black-box acceptance tests that must exercise
+# expiry and an audit sink outage through the public MCP endpoint.  Production
+# settings ignore them even if a deployment accidentally leaves the variables
+# in its process environment.
+if IS_PRODUCTION:
+    MCP_TEST_EXPIRED_PROPOSAL_ID = ""
+    MCP_TEST_PROPOSAL_TTL_SECONDS = None
+    MCP_TEST_AUDIT_FAILURE_MODE = False
+else:
+    MCP_TEST_EXPIRED_PROPOSAL_ID = os.environ.get("MCP_TEST_EXPIRED_PROPOSAL_ID", "").strip()
+    try:
+        _test_ttl = os.environ.get("MCP_TEST_PROPOSAL_TTL_SECONDS", "").strip()
+        MCP_TEST_PROPOSAL_TTL_SECONDS = int(_test_ttl) if _test_ttl else None
+    except ValueError as exc:
+        raise ImproperlyConfigured("MCP_TEST_PROPOSAL_TTL_SECONDS must be an integer") from exc
+    if MCP_TEST_PROPOSAL_TTL_SECONDS is not None and not 1 <= MCP_TEST_PROPOSAL_TTL_SECONDS <= 900:
+        raise ImproperlyConfigured("MCP_TEST_PROPOSAL_TTL_SECONDS must be between 1 and 900 seconds")
+    MCP_TEST_AUDIT_FAILURE_MODE = os.environ.get("MCP_TEST_AUDIT_FAILURE_MODE", "") == "1"
+MCP_PROTECTED_RESOURCE_METADATA_URI = (
+    f"{MCP_AUTHORIZATION_ISSUER}/.well-known/oauth-protected-resource{MCP_ENDPOINT}"
+)
+MCP_ALLOWED_ORIGINS = tuple(
+    origin.strip()
+    for origin in os.environ.get(
+        "MCP_ALLOWED_ORIGINS", "https://client.example.test"
+    ).split(",")
+    if origin.strip()
+)
+MCP_ALLOWED_HOSTS = tuple(
+    host.strip()
+    for host in os.environ.get(
+        "MCP_ALLOWED_HOSTS",
+        "testserver,localhost:*,127.0.0.1:*,[::1]:*",
+    ).split(",")
+    if host.strip()
+)
+
 # Keep the static-files handler usable for the public development entry point
 # without coupling production deployment to a writable source directory.
 STATIC_URL = os.environ.get("DJANGO_STATIC_URL", "/static/").strip() or "/static/"
@@ -239,3 +301,40 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
+
+OAUTH2_PROVIDER = {
+    # MCP uses the OAuth Toolkit store as the Authorization Server.  The
+    # normal web JWT remains a separate authentication system and is never
+    # accepted by the MCP resource server.
+    "SCOPES": {
+        "applications:read": "读取当前用户的投递进度",
+        "applications:write": "写入当前用户的投递进度",
+    },
+    "DEFAULT_SCOPES": [],
+    "PKCE_REQUIRED": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "CIMD_ENABLED": True,
+    "DCR_ENABLED": True,
+    "DCR_REGISTRATION_PERMISSION_CLASSES": (
+        "oauth2_provider.dcr.AllowAllDCRPermission",
+    ),
+    "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
+    "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
+    "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": ["none"],
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https"],
+    "OIDC_ISS_ENDPOINT": MCP_AUTHORIZATION_ISSUER,
+    "OAUTH2_PROTECTED_RESOURCE_IDENTIFIER": MCP_RESOURCE_URI,
+    "OAUTH2_PROTECTED_RESOURCE_AUTHORIZATION_SERVERS": [MCP_AUTHORIZATION_ISSUER],
+    "OAUTH2_PROTECTED_RESOURCE_BEARER_METHODS_SUPPORTED": ["header"],
+}
+
+# AuthorizationView uses Django's session boundary.  The MCP login view is a
+# deliberately small browser hand-off; the existing JWT endpoints remain the
+# API login mechanism and are not reused as OAuth credentials.
+LOGIN_URL = "/oauth/login"
