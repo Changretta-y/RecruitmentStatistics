@@ -20,8 +20,8 @@
 - [ ] v0.2.0 可加载，既有插件专项回归通过。
 - [ ] 测试 Agent 先 RED，实现 Agent READY_FOR_TEST，测试 Agent TEST_PASSED，PM 验收 DONE。
 
-## Agent 交接
+## RED 证据`r`n`r`n- 测试提交：`cc0545e``r`n- 报告：`docs/test-reports/EXT-ROUTE-007-red.md``r`n- 结果：专项 2 passed / 2 failed；缺少 `manifest.icons` 与 `action.default_icon`，版本及合成登录回归通过。`r`n`r`n## Agent 交接
 
-- 当前状态：PLANNED → TEST_WRITING。
+- 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
 - 实现 Agent：`company_implementation`，仅修改插件图标、构建产物与说明。
