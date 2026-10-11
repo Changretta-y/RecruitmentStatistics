@@ -30,7 +30,6 @@ CORS_ALLOWED_ORIGINS = tuple(
     for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
     if origin.strip()
 )
-
 ROOT_URLCONF = "backend.config.urls"
 
 MIDDLEWARE = [
@@ -180,6 +179,16 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     "DEFAULT_FROM_EMAIL", "noreply@example.com"
 ).strip()
 FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "").rstrip("/")
+CSRF_TRUSTED_ORIGINS = tuple(
+    dict.fromkeys(
+        origin.strip()
+        for origin in (
+            os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
+            + ([FRONTEND_BASE_URL] if FRONTEND_BASE_URL else [])
+        )
+        if origin.strip()
+    )
+)
 
 # MCP is deliberately configured with an explicit public origin.  OAuth
 # issuers and RFC 8707 resource indicators are exact strings, so deriving
