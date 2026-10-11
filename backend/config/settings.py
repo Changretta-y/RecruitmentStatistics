@@ -327,7 +327,10 @@ OAUTH2_PROVIDER = {
     "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
     "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
     "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": ["none"],
-    "ALLOWED_REDIRECT_URI_SCHEMES": ["https"],
+    # HTTP is intentionally enabled for the current public integration test
+    # environment.  Production should override this policy with HTTPS-only
+    # once the public hostname has TLS.
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["http", "https"],
     "OIDC_ISS_ENDPOINT": MCP_AUTHORIZATION_ISSUER,
     "OAUTH2_PROTECTED_RESOURCE_IDENTIFIER": MCP_RESOURCE_URI,
     "OAUTH2_PROTECTED_RESOURCE_AUTHORIZATION_SERVERS": [MCP_AUTHORIZATION_ISSUER],
