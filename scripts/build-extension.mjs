@@ -12,6 +12,7 @@ const outputPath = path.join(
 );
 const runtimeFiles = [
   "core.js",
+  "logo.png",
   "manifest.json",
   "popup.css",
   "popup.html",
