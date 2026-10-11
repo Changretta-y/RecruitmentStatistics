@@ -22,6 +22,6 @@
 
 ## RED 证据`r`n`r`n- 测试提交：`cc0545e``r`n- 报告：`docs/test-reports/EXT-ROUTE-007-red.md``r`n- 结果：专项 2 passed / 2 failed；缺少 `manifest.icons` 与 `action.default_icon`，版本及合成登录回归通过。`r`n`r`n## Agent 交接
 
-- 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 当前状态：RED_CONFIRMED → IMPLEMENTING → READY_FOR_TEST。`r`n`r`n- 实现提交：`5000877``r`n- 实现说明：`docs/implementation-notes/EXT-ROUTE-007.md``r`n- 交付包：`artifacts/recruitment-capture-extension-v0.2.0.zip`，Logo SHA-256 与平台资源一致。
 - 测试 Agent：`company_tests`，仅修改 tests/e2e/ 与报告。
 - 实现 Agent：`company_implementation`，仅修改插件图标、构建产物与说明。
