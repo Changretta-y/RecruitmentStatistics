@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "backend.apps.notifications",
     "backend.apps.health",
     "backend.apps.sharing",
+    "backend.apps.prompts",
 ]
 
 try:

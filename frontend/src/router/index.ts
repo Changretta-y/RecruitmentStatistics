@@ -15,6 +15,7 @@ import CalendarView from "../views/CalendarView.vue";
 import NotificationSettingsView from "../views/NotificationSettingsView.vue";
 import NotificationVerifyView from "../views/NotificationVerifyView.vue";
 import SharingView from "../views/SharingView.vue";
+import PromptsView from "../views/PromptsView.vue";
 
 const routes: RouteRecordRaw[] = [
   { path: "/sharing", name: "sharing", component: SharingView, meta: { requiresAuth: true } },
@@ -42,6 +43,12 @@ const routes: RouteRecordRaw[] = [
     path: "/calendar",
     name: "calendar",
     component: CalendarView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: "/prompts",
+    name: "prompts",
+    component: PromptsView,
     meta: { requiresAuth: true },
   },
   {

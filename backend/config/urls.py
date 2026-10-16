@@ -19,4 +19,5 @@ urlpatterns = [
     path("api/v1/companies/", include("backend.apps.applications.company_urls")),
     path("api/v1/applications/", include("backend.apps.applications.urls")),
     path("api/v1/sharing/", include("backend.apps.sharing.urls")),
+    path("api/v1/prompts/", include("backend.apps.prompts.urls")),
 ]
