@@ -1,6 +1,6 @@
 # WEB-APP-015 提示词复制兼容与卡片折叠
 
-- 状态：READY_FOR_TEST
+- 状态：DONE
 - 用户价值：在 HTTP/权限受限环境中也能可靠复制提示词，长提示词不会撑满列表。
 - 范围：修复提示词复制兼容回退和失败提示；卡片正文固定长度预览，点击卡片查看完整内容。
 - 非范围：不改变提示词 API、数据隔离、搜索、新增、编辑、删除和预设内容。
@@ -30,7 +30,7 @@
 
 ## Agent 交接
 
-- 当前状态：RED_CONFIRMED → IMPLEMENTING → READY_FOR_TEST。
+- 当前状态：READY_FOR_TEST → TEST_PASSED → ACCEPTING → DONE。
 - 实现 Agent：`release_implementation`，只改 `frontend/src/` 和实现说明。
 
 ## 实现交接
@@ -38,3 +38,9 @@
 - 实现提交：`dc795e9`
 - 实现说明：`docs/implementation-notes/WEB-APP-015.md`
 - 实现自测：WEB-APP-015 Playwright 5/5。
+
+## TEST_PASSED 证据
+
+- 测试更新：`1e2fcf5`
+- 通过报告：`docs/test-reports/WEB-APP-015-passed.md`
+- 结果：015 专项 5/5，WEB-APP-014 回归 8/8。
