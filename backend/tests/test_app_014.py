@@ -1,4 +1,4 @@
-"""APP-012 black-box tests for the authenticated prompt-management API."""
+"""APP-014 black-box tests for the authenticated prompt-management API."""
 
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ def client():
 
 
 def _register_and_login(client: Client, prefix: str) -> dict[str, str | int]:
-    username = f"{prefix}-{uuid.uuid4().hex[:12]}"
+    # Keep synthetic usernames within the public 30-character auth limit.
+    username = f"{prefix[:15]}-{uuid.uuid4().hex[:12]}"
     credentials = {
         "username": username,
         "email": f"{username}@example.test",
@@ -79,7 +80,10 @@ def test_first_list_initializes_presets_once_and_isolated_between_users(client):
     assert {item["title"] for item in _json(other)["results"]} == {item["title"] for item in body["results"]}
     created = _create(client, user_a, "仅 A 可见", "私有正文")
     assert created.status_code == 201, created.content
-    b_titles = {item["title"] for item in _json(client.get(PROMPTS_URL, **_headers(user_b))["results"])}
+    b_titles = {
+        item["title"]
+        for item in _json(client.get(PROMPTS_URL, **_headers(user_b)))["results"]
+    }
     assert "仅 A 可见" not in b_titles
 
 
@@ -126,12 +130,18 @@ def test_create_patch_delete_and_validation_are_owner_bound(client):
     assert _json(client.get(f"{PROMPTS_URL}{prompt_id}/", **_headers(owner)))["content"] == "更新正文"
 
     for method in ("get", "patch", "delete"):
-        response = getattr(client, method)(
-            f"{PROMPTS_URL}{prompt_id}/",
-            {"title": "越权", "content": "越权"} if method == "patch" else None,
-            content_type="application/json" if method == "patch" else None,
-            **_headers(other),
-        )
+        path = f"{PROMPTS_URL}{prompt_id}/"
+        if method == "patch":
+            response = client.patch(
+                path,
+                {"title": "越权", "content": "越权"},
+                content_type="application/json",
+                **_headers(other),
+            )
+        elif method == "get":
+            response = client.get(path, **_headers(other))
+        else:
+            response = client.delete(path, **_headers(other))
         assert response.status_code == 404, response.content
 
     deleted = client.delete(f"{PROMPTS_URL}{prompt_id}/", **_headers(owner))
