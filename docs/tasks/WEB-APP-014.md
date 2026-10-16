@@ -32,6 +32,8 @@
 
 ## Agent 交接
 
-- 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 当前状态：RED_CONFIRMED → IMPLEMENTING → READY_FOR_TEST。
 - 测试 Agent：`company_tests`，已提交黑盒测试。
+- 实现提交：`d3fed17`
+- 实现说明：`docs/implementation-notes/APP-014.md`、`docs/implementation-notes/WEB-APP-014.md`
 - 实现 Agent：`company_implementation`，负责后端模型/API、迁移及前端页面/路由/导航。
