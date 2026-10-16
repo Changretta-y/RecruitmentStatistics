@@ -1,6 +1,6 @@
 # WEB-APP-015 提示词复制兼容与卡片折叠
 
-- 状态：PLANNED
+- 状态：RED_CONFIRMED
 - 用户价值：在 HTTP/权限受限环境中也能可靠复制提示词，长提示词不会撑满列表。
 - 范围：修复提示词复制兼容回退和失败提示；卡片正文固定长度预览，点击卡片查看完整内容。
 - 非范围：不改变提示词 API、数据隔离、搜索、新增、编辑、删除和预设内容。
@@ -21,3 +21,14 @@
 - [ ] 双重复制失败时提示失败，记录未被修改。
 - [ ] 长内容卡片预览固定长度，详情能查看完整内容。
 - [ ] WEB-APP-014 核心回归通过。
+
+## RED 证据
+
+- 测试提交：`b52a8df`
+- 报告：`docs/test-reports/WEB-APP-015-red.md`
+- 结果：专项 1 passed / 4 failed / 0 errors；失败均为复制回退、固定预览和详情行为缺失，WEB-APP-014 核心回归 8/8。
+
+## Agent 交接
+
+- 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 实现 Agent：`release_implementation`，只改 `frontend/src/` 和实现说明。
