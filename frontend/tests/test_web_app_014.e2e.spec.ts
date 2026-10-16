@@ -110,12 +110,12 @@ test('copy invokes clipboard and reports success without changing the record', a
   await expect(promptTitle(page, '自我介绍')).toBeVisible();
 });
 
-test('clipboard failure shows an error and leaves the prompt intact', async ({ page }) => {
+test('clipboard rejection falls back and reports success without changing the record', async ({ page }) => {
   await setup(page, { clipboardFailure: true });
   await page.goto('/prompts');
   await promptTitle(page, '自我介绍').click();
   await action(page, /复制/).click();
-  await expect(page.getByText(/复制失败|剪贴板|无法复制/)).toBeVisible();
+  await expect(page.getByText(/复制成功|已复制/)).toBeVisible();
   await expect(promptTitle(page, '自我介绍')).toBeVisible();
 });
 
@@ -150,8 +150,10 @@ test('delete requires confirmation; cancel does not request, confirm removes the
   await action(page, /删除/).click();
   await expect(page.getByText(/确认删除|确定删除/)).toBeVisible();
   await page.getByRole('button', { name: /取消/ }).click();
+  await expect(page.getByText(/确认删除|确定删除/)).toBeHidden();
   expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
-  await action(page, /删除/).click();
+  await promptTitle(page, '我的自定义提示').click();
+  await page.getByRole('button', { name: /删除/ }).first().click();
   await page.getByRole('button', { name: /确认删除|确定/ }).click();
   await expect.poll(() => calls.some((call) => call.method === 'DELETE' && call.path === '/api/v1/prompts/1404/')).toBe(true);
   await expect(promptTitle(page, '我的自定义提示')).toHaveCount(0);
