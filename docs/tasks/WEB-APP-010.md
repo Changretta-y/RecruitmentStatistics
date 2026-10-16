@@ -1,25 +1,50 @@
-# WEB-APP-010 提示词管理页面
+# WEB-APP-010 替换项目 Logo 资源
 
-- 状态：PLANNED
-- 用户价值：在独立页面集中管理自己的提示词，点击即可复制，减少重复输入。
-- 范围：新增受保护的 `/prompts` 页面、主导航入口、搜索、预设展示、新增/编辑/删除和复制交互。
-- 非范围：手机端专项适配、公共共享、AI 执行提示词。
-- 依赖：APP-012 提供提示词 API；现有 AppShell、认证和 Vuetify 组件库。
-- 允许修改范围：项目管理仅 `docs/tasks/`、`docs/acceptance/`；测试仅 `frontend/tests/`、`tests/e2e/`、`docs/test-reports/`；实现仅 `frontend/src/`、`docs/implementation-notes/`。
+- 状态：`DONE`
+- 角色：项目管理=主 Agent；独立测试=release_tests；独立实现=company_implementation。
+- 用户价值：将项目当前品牌图片替换为用户最新提供的 Logo，网页和内部品牌区域保持统一。
+- 资源来源：用户附件 `codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png`；SHA-256 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。实现角色可从 `C:\Users\Yinchengyu\AppData\Local\Temp\codex-clipboard-92ab7fb8-e5c5-4b5e-b6c6-ed4781e981d8.png` 读取。
+- 范围：替换现有 `frontend/public/logo.png` 的原图字节，保留 favicon、AppShell 品牌区域和访问路径。
+- 非范围：品牌布局、后端接口、Logo 重绘、手机端适配和其他 WEB-APP-008 功能。
+- 允许修改范围：项目管理仅 `docs/requirements/`、`docs/tasks/`、`docs/acceptance/`；测试仅 `frontend/tests/`、`docs/test-reports/`；实现仅 `frontend/public/`、`docs/implementation-notes/`。
 
-## 公开 UI 契约
+## 公开契约
 
-- 主导航出现“提示词管理”，进入 `/prompts`；未登录访问重定向到登录页。
-- 页面展示搜索框和提示词卡片/列表；每项显示标题、内容、预设标识以及“复制、编辑、删除”操作。
-- 点击“复制”调用浏览器剪贴板并显示成功提示；剪贴板不可用时显示错误提示，不删除或修改记录。
-- 点击“新增提示词”打开表单，标题和内容必填；编辑复用表单，保存后刷新当前列表。
-- 删除需二次确认，成功后从列表移除；取消不产生请求。
-- 搜索只影响当前用户的提示词，空结果显示明确状态；加载和 API 错误有可见提示。
-- 页面沿用现有 Vuetify 组件和 AppShell 桌面风格。
+- `/logo.png` 仍是 favicon 和 AppShell 品牌图片的唯一资源路径。
+- 开发服务器、构建产物和线上静态资源的 Logo 字节必须与新附件 SHA-256 一致。
+- AppShell 的 alt、项目名称、favicon 链接和现有导航行为保持正常。
+- 不得把新图压缩、裁剪或替换成其他图片；允许构建工具复制但不改变字节。
 
 ## 验收标准
 
-- [ ] 路由、导航和登录保护可观察。
-- [ ] 预设提示词展示、搜索、复制、新增、编辑、删除流程可完成。
-- [ ] 表单校验和网络错误有可见反馈，操作不会串用户。
-- [ ] 现有投递、日历、通知页面回归通过。
+- [ ] 新资源 SHA-256 与用户附件一致。
+- [ ] favicon 和侧栏品牌图片仍可加载并使用新资源。
+- [ ] 登录、导航、构建回归通过。
+
+## Agent 交接
+
+- 测试先依据当前旧资源确认稳定 RED，再交实现角色。
+- 实现角色只替换资源并写实现说明，不修改测试或无关 WEB-APP-008 改动。
+
+## 2026-10-07 RED 与实现交接
+
+- 测试先行提交：`17083c6`；报告：`docs/test-reports/WEB-APP-010-red.md`。
+- Edge 连续两次为 1/3 通过、0 flaky；登录/导航基线通过，本地 favicon 与侧栏 `/logo.png` 均稳定返回旧 Logo SHA，不匹配新附件 SHA。
+- 状态轨迹：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 接收实现角色：company_implementation；只替换 `frontend/public/logo.png` 原始字节并写实现说明，保留 favicon 路径、AppShell 结构、既有 APP-010 测试和 WEB-APP-008 未提交改动。
+
+## 2026-10-07 实现交接
+
+- 实现提交：`15b1f2e`；说明：`docs/implementation-notes/WEB-APP-010.md`。
+- 用户附件、`frontend/public/logo.png` 和构建产物 `dist/logo.png` SHA-256 均为 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。
+- Logo Edge 专项 3/3、lint/build、staged diff check 通过；favicon/AppShell 路径和结构未修改。
+- 接收测试角色：release_tests，独立复测新 Logo 字节、favicon、侧栏与导航回归后提交 TEST_PASSED。
+
+## 2026-10-07 PM 验收结果
+
+- 状态：DONE。
+- 独立报告：`docs/test-reports/WEB-APP-010-passed.md`，提交 `5898e03`；实现提交 `15b1f2e`；有效 RED `17083c6`。
+- [x] 用户新附件、`frontend/public/logo.png` 和 `dist/logo.png` SHA-256 均为 `A09C7876116515619AC4A2ED0293ADE91077627A446329458CED6B9515D79E88`。
+- [x] favicon 和 AppShell 继续使用 `/logo.png`，页面 alt、项目名称、登录、日历和投递列表导航正常。
+- [x] Edge 3/3、lint/build 通过；既有 APP-010 测试和 WEB-APP-008 未提交改动未修改。
+- 结论：任务契约全部满足，项目管理 Agent 设置 DONE。
