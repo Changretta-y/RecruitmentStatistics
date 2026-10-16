@@ -1,6 +1,6 @@
 # WEB-APP-014 提示词管理页面
 
-- 状态：PLANNED
+- 状态：RED_CONFIRMED
 - 用户价值：在独立页面集中管理自己的提示词，点击即可复制，减少重复输入。
 - 范围：新增受保护的 `/prompts` 页面、主导航入口、搜索、预设展示、新增/编辑/删除和复制交互。
 - 非范围：手机端专项适配、公共共享、AI 执行提示词。
@@ -23,3 +23,15 @@
 - [ ] 预设提示词展示、搜索、复制、新增、编辑、删除流程可完成。
 - [ ] 表单校验和网络错误有可见反馈，操作不会串用户。
 - [ ] 现有投递、日历、通知页面回归通过。
+
+## RED 证据
+
+- 测试提交：`ab747bb`
+- 报告：`docs/test-reports/WEB-APP-014-red.md`
+- 结果：后端 5 failed/0 errors，前端 8 failed/0 passed；均为缺失提示词 API/页面行为导致，专用 PostgreSQL 与 Playwright 环境正常。
+
+## Agent 交接
+
+- 当前状态：TEST_WRITING → RED_CONFIRMED → IMPLEMENTING。
+- 测试 Agent：`company_tests`，已提交黑盒测试。
+- 实现 Agent：`company_implementation`，负责后端模型/API、迁移及前端页面/路由/导航。
