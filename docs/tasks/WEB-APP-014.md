@@ -1,6 +1,6 @@
 # WEB-APP-014 提示词管理页面
 
-- 状态：RED_CONFIRMED
+- 状态：DONE
 - 用户价值：在独立页面集中管理自己的提示词，点击即可复制，减少重复输入。
 - 范围：新增受保护的 `/prompts` 页面、主导航入口、搜索、预设展示、新增/编辑/删除和复制交互。
 - 非范围：手机端专项适配、公共共享、AI 执行提示词。
@@ -32,8 +32,14 @@
 
 ## Agent 交接
 
-- 当前状态：RED_CONFIRMED → IMPLEMENTING → READY_FOR_TEST。
+- 当前状态：READY_FOR_TEST → TEST_PASSED → ACCEPTING → DONE。
 - 测试 Agent：`company_tests`，已提交黑盒测试。
 - 实现提交：`d3fed17`
 - 实现说明：`docs/implementation-notes/APP-014.md`、`docs/implementation-notes/WEB-APP-014.md`
 - 实现 Agent：`company_implementation`，负责后端模型/API、迁移及前端页面/路由/导航。
+
+## TEST_PASSED 证据
+
+- 测试提交：`3cf56bd`（测试夹具修正）、`f5fe326`（通过报告）
+- 报告：`docs/test-reports/WEB-APP-014-passed.md`
+- 结果：专项通过，现有认证/投递和公司页面回归通过；另有历史 WEB-APP-011 断言问题与本任务无关。
